@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { type Card } from '../data/cards'
+import { clearCardsCache } from '../lib/cardsCache'
 
 export type CardInput = Omit<Card, 'id'>
 
@@ -21,19 +22,29 @@ export function useAdminCards() {
 
   async function createCard(input: CardInput) {
     const { data, error } = await supabase.from('cards').insert(input).select().single()
-    if (!error && data) setCards(prev => [...prev, data as Card])
+    if (!error && data) {
+      setCards(prev => [...prev, data as Card]);
+      clearCardsCache()
+    }
     return error
   }
 
   async function updateCard(id: number, input: CardInput) {
     const { error } = await supabase.from('cards').update(input).eq('id', id)
-    if (!error) setCards(prev => prev.map(c => c.id === id ? { id, ...input } : c))
+    if (!error) {
+      setCards(prev => prev.map(c => c.id === id ? { id, ...input } : c));
+      clearCardsCache()
+    }
     return error
   }
 
   async function deleteCard(id: number) {
     const { error } = await supabase.from('cards').delete().eq('id', id)
-    if (!error) setCards(prev => prev.filter(c => c.id !== id))
+    if (!error) {
+      setCards(prev => prev.filter(c => c.id !== id));
+      clearCardsCache()
+    }
+      
     return error
   }
 
