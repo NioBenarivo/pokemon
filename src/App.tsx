@@ -8,6 +8,7 @@ import StatsBar from './components/StatsBar'
 import SearchFilter from './components/SearchFilter'
 import ActionBar from './components/ActionBar'
 import CardGrid from './components/CardGrid'
+import CardLightbox from './components/CardLightbox'
 import Footer from './components/Footer'
 import Pagination from './components/Pagination'
 import { CARDS_PER_PAGE } from './data/cards'
@@ -23,6 +24,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [activeTab, setActiveTab] = useState<'all' | 'binder'>('all')
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [lightboxCard, setLightboxCard] = useState<typeof cards[number] | null>(null)
   const [adding, setAdding] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPack, setSelectedPack] = useState<string | null>(null)
@@ -38,6 +41,7 @@ export default function App() {
     setActiveTab(tab)
     setCurrentPage(1)
     setSelected(new Set())
+    setSelectMode(false)
     setSearchQuery('')
     setSelectedPack(null)
   }
@@ -48,8 +52,28 @@ export default function App() {
       const next = new Set(prev)
       if (next.has(cardId)) next.delete(cardId)
       else next.add(cardId)
+      if (next.size === 0) setSelectMode(false)
       return next
     })
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelected(new Set())
+  }
+
+  function handleCardClick(card: typeof cards[number]) {
+    if (selectMode) {
+      toggleSelected(card.id)
+    } else {
+      setLightboxCard(card)
+    }
+  }
+
+  function handleCardLongPress(card: typeof cards[number]) {
+    if (activeTab === 'all' && owned.has(card.id)) return
+    if (!selectMode) setSelectMode(true)
+    toggleSelected(card.id)
   }
 
   async function handleAddToBinder() {
@@ -57,6 +81,7 @@ export default function App() {
     setAdding(true)
     await addMultiple([...selected])
     setSelected(new Set())
+    setSelectMode(false)
     setAdding(false)
   }
 
@@ -65,6 +90,7 @@ export default function App() {
     setAdding(true)
     await removeMultiple([...selected])
     setSelected(new Set())
+    setSelectMode(false)
     setAdding(false)
   }
 
@@ -109,8 +135,10 @@ export default function App() {
           selectedCount={selected.size}
           activeTab={activeTab}
           adding={adding}
+          selectMode={selectMode}
           onAdd={handleAddToBinder}
           onRemove={handleRemoveFromBinder}
+          onCancel={exitSelectMode}
         />
 
         <CardGrid
@@ -118,10 +146,12 @@ export default function App() {
           owned={owned}
           selected={selected}
           activeTab={activeTab}
+          selectMode={selectMode}
           searchQuery={searchQuery}
           selectedPack={selectedPack}
           hasCards={displayCards.length > 0}
-          onToggle={toggleSelected}
+          onCardClick={handleCardClick}
+          onCardLongPress={handleCardLongPress}
         />
 
         {displayCards.length > 0 && (
@@ -137,6 +167,10 @@ export default function App() {
         <Footer activeTab={activeTab} selectedCount={selected.size} />
 
       </div>
+
+      {lightboxCard && (
+        <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
+      )}
     </div>
   )
 }

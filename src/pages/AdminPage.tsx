@@ -3,6 +3,8 @@ import { type Card } from '../data/cards'
 import { useAdminCards } from '../hooks/useAdminCards'
 import CardTable from '../components/admin/CardTable'
 import CardFormModal from '../components/admin/CardFormModal'
+import AdminHeader from '../components/admin/AdminHeader'
+import AdminToolbar from '../components/admin/AdminToolbar'
 import LoadingScreen from '../components/LoadingScreen'
 
 interface Props {
@@ -11,6 +13,7 @@ interface Props {
 
 export default function AdminPage({ onSignOut }: Props) {
   const { cards, loading, createCard, updateCard, deleteCard } = useAdminCards()
+  const [search, setSearch] = useState('')
   const [modalCard, setModalCard] = useState<Card | null | undefined>(undefined)
   const [deleteTarget, setDeleteTarget] = useState<Card | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -19,6 +22,13 @@ export default function AdminPage({ onSignOut }: Props) {
   if (loading) return <LoadingScreen message="Loading cards..." />
 
   const isModalOpen = modalCard !== undefined
+  const query = search.trim().toLowerCase()
+  const filteredCards = query
+    ? cards.filter(c =>
+        c.name.toLowerCase().includes(query) ||
+        c.pack.toLowerCase().includes(query)
+      )
+    : cards
 
   async function handleSave(input: Parameters<typeof createCard>[0]) {
     if (modalCard) return updateCard(modalCard.id, input)
@@ -41,33 +51,18 @@ export default function AdminPage({ onSignOut }: Props) {
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-5xl mx-auto">
 
-        <header className="flex items-center justify-between mb-8">
-          <div>
-            <p className="text-zinc-400 text-xs uppercase tracking-widest mb-1">Admin</p>
-            <h1 className="text-zinc-900 text-2xl font-bold tracking-tight">Card Management</h1>
-          </div>
-          <button
-            onClick={onSignOut}
-            className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
-          >
-            Sign out
-          </button>
-        </header>
+        <AdminHeader onSignOut={onSignOut} />
 
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-zinc-500 text-sm">
-            <span className="text-zinc-900 font-semibold">{cards.length}</span> cards total
-          </p>
-          <button
-            onClick={() => setModalCard(null)}
-            className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors"
-          >
-            + New Card
-          </button>
-        </div>
+        <AdminToolbar
+          search={search}
+          onSearchChange={setSearch}
+          totalCount={cards.length}
+          filteredCount={filteredCards.length}
+          onNewCard={() => setModalCard(null)}
+        />
 
         <CardTable
-          cards={cards}
+          cards={filteredCards}
           onEdit={card => setModalCard(card)}
           onDelete={card => { setDeleteTarget(card); setDeleteError(null) }}
         />

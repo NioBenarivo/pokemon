@@ -118,10 +118,10 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
             <label className="block text-xs font-medium text-zinc-500 mb-1">Image</label>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer border-2 border-dashed border-zinc-200 rounded-lg p-4 flex flex-col items-center justify-center gap-2 hover:border-zinc-400 transition-colors"
+              className="cursor-pointer border-2 border-dashed border-zinc-200 rounded-lg p-4 flex flex-col items-center justify-center gap-2 hover:border-zinc-400 transition-colors min-h-64"
             >
               {preview ? (
-                <img src={preview} alt="Preview" className="h-24 object-contain" />
+                <img src={preview} alt="Preview" className="max-h-56 object-contain" />
               ) : form.image ? (
                 <p className="text-xs text-zinc-400 font-mono text-center break-all">{form.image}</p>
               ) : (

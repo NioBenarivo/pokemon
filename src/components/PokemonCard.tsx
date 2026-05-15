@@ -1,25 +1,66 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Card } from '../data/cards'
 import { R2_BASE } from '../data/cards'
+
+const LONG_PRESS_MS = 500
 
 interface Props {
   card: Card
   isOwned: boolean
   isSelected?: boolean
-  onToggle?: () => void
+  selectMode?: boolean
+  onClick?: () => void
+  onLongPress?: () => void
   readOnly?: boolean
 }
 
-export default function PokemonCard({ card, isOwned, isSelected = false, onToggle, readOnly = false }: Props) {
+export default function PokemonCard({
+  card, isOwned, isSelected = false, selectMode = false,
+  onClick, onLongPress, readOnly = false,
+}: Props) {
   const [imageLoaded, setImageLoaded] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const didLongPressRef = useRef(false)
+
+  function startPress() {
+    didLongPressRef.current = false
+    timerRef.current = setTimeout(() => {
+      didLongPressRef.current = true
+      onLongPress?.()
+    }, LONG_PRESS_MS)
+  }
+
+  function cancelPress() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  function handleClick() {
+    if (didLongPressRef.current) {
+      didLongPressRef.current = false
+      return
+    }
+    onClick?.()
+  }
+
+  const interactionProps = {
+    onPointerDown: startPress,
+    onPointerUp: cancelPress,
+    onPointerLeave: cancelPress,
+    onPointerCancel: cancelPress,
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+    onClick: handleClick,
+  }
 
   if (readOnly) {
     return (
       <div
-        onClick={onToggle}
+        {...interactionProps}
         className={[
           'group select-none relative rounded-2xl overflow-hidden transition-all duration-200',
-          onToggle ? 'cursor-pointer' : 'cursor-default',
+          onClick || onLongPress ? 'cursor-pointer' : 'cursor-default',
           isSelected ? 'ring-2 ring-red-400 ring-offset-2 shadow-lg' : 'shadow-md hover:shadow-xl',
         ].join(' ')}
       >
@@ -40,21 +81,28 @@ export default function PokemonCard({ card, isOwned, isSelected = false, onToggl
               !imageLoaded ? 'opacity-0' : 'opacity-100',
             ].join(' ')}
           />
-          {/* Checkmark badge for binder selection */}
+
+          {/* Selection badge */}
           <div
             className={[
-              'absolute top-1.5 right-1.5 w-5 h-5 bg-red-400 rounded-full',
+              'absolute top-1.5 right-1.5 w-5 h-5 rounded-full',
               'flex items-center justify-center shadow-md',
-              'transition-all duration-300',
-              isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-50',
+              'transition-all duration-200',
+              isSelected
+                ? 'bg-red-400 opacity-100 scale-100'
+                : selectMode
+                ? 'bg-white/30 border border-white/60 opacity-100 scale-100'
+                : 'opacity-0 scale-50',
             ].join(' ')}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            {isSelected && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
           </div>
 
-          {/* Gradient overlay — slides up on hover */}
+          {/* Gradient overlay */}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pt-8 pb-3 px-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
             <p className="text-white text-xs font-semibold truncate leading-tight">{card.name}</p>
             <p className="text-white/50 text-[10px] truncate mt-0.5">{card.pack}</p>
@@ -72,9 +120,9 @@ export default function PokemonCard({ card, isOwned, isSelected = false, onToggl
 
   return (
     <div
-      onClick={onToggle}
+      {...interactionProps}
       className="cursor-pointer group select-none"
-      title={isOwned ? 'Already in binder' : isSelected ? 'Click to deselect' : 'Click to select'}
+      title={isOwned ? 'Already in binder' : isSelected ? 'Click to deselect' : selectMode ? 'Click to select' : 'Hold to select'}
     >
       <div
         className={[
@@ -82,7 +130,6 @@ export default function PokemonCard({ card, isOwned, isSelected = false, onToggl
           borderColor,
         ].join(' ')}
       >
-        {/* Image */}
         <div className="bg-zinc-100 relative overflow-hidden" style={{ paddingBottom: '80%' }}>
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 animate-pulse">
@@ -100,22 +147,30 @@ export default function PokemonCard({ card, isOwned, isSelected = false, onToggl
               !imageLoaded ? 'opacity-0' : 'opacity-100',
             ].join(' ')}
           />
-          {/* Checkmark badge */}
+
+          {/* Selection / ownership badge */}
           <div
             className={[
               'absolute top-1.5 right-1.5 w-5 h-5 rounded-full',
               'flex items-center justify-center shadow-md',
-              'transition-all duration-300',
-              isOwned ? 'bg-green-400 opacity-100 scale-100' : isSelected ? 'bg-blue-400 opacity-100 scale-100' : 'opacity-0 scale-50 bg-green-400',
+              'transition-all duration-200',
+              isOwned
+                ? 'bg-green-400 opacity-100 scale-100'
+                : isSelected
+                ? 'bg-blue-400 opacity-100 scale-100'
+                : selectMode
+                ? 'bg-white border border-zinc-300 opacity-100 scale-100'
+                : 'opacity-0 scale-50',
             ].join(' ')}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            {(isOwned || isSelected) && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
           </div>
         </div>
 
-        {/* Info footer */}
         <div className="bg-white px-2.5 py-2">
           <p className="text-zinc-800 font-semibold text-[11px] leading-tight truncate mb-1.5">
             {card.name}

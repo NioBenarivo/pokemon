@@ -7,10 +7,12 @@ interface Props {
   owned: Set<number>
   selected: Set<number>
   activeTab: 'all' | 'binder'
+  selectMode: boolean
   searchQuery: string
   selectedPack: string | null
   hasCards: boolean
-  onToggle: (cardId: number) => void
+  onCardClick: (card: Card) => void
+  onCardLongPress: (card: Card) => void
 }
 
 export default function CardGrid({
@@ -18,10 +20,12 @@ export default function CardGrid({
   owned,
   selected,
   activeTab,
+  selectMode,
   searchQuery,
   selectedPack,
   hasCards,
-  onToggle,
+  onCardClick,
+  onCardLongPress,
 }: Props) {
   return (
     <div className="bg-zinc-50 rounded-2xl p-5 border border-zinc-200">
@@ -44,7 +48,9 @@ export default function CardGrid({
                 card={card}
                 isOwned={owned.has(card.id)}
                 isSelected={selected.has(card.id)}
-                onToggle={() => onToggle(card.id)}
+                selectMode={selectMode}
+                onClick={() => onCardClick(card)}
+                onLongPress={() => onCardLongPress(card)}
                 readOnly={activeTab === 'binder'}
               />
             )

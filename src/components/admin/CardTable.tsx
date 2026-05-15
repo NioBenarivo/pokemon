@@ -9,7 +9,7 @@ interface Props {
 export default function CardTable({ cards, onEdit, onDelete }: Props) {
   if (cards.length === 0) {
     return (
-      <p className="text-center text-zinc-400 text-sm py-10">No cards yet. Create one above.</p>
+      <p className="text-center text-zinc-400 text-sm py-10">No cards found.</p>
     )
   }
 
