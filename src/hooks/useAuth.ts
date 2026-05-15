@@ -10,7 +10,10 @@ export function useAuth() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchRole(session.user.id)
+      if (session?.user) {
+        setLoading(true);
+        fetchRole(session.user.id)
+      }
       else setLoading(false)
     })
 
