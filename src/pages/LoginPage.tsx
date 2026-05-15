@@ -41,7 +41,7 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              placeholder="e.g. zunio"
+              placeholder="e.g. xxxx"
               required
               autoComplete="username"
               className="w-full px-3 py-2.5 rounded-lg border border-zinc-200 text-sm

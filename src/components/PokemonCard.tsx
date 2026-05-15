@@ -97,7 +97,7 @@ export default function PokemonCard({ card, isOwned, isSelected = false, onToggl
             className={[
               'absolute inset-0 w-full h-full object-contain p-3 drop-shadow-lg',
               'transition-all duration-500 group-hover:scale-105',
-              !imageLoaded ? 'opacity-0' : (isOwned || isSelected) ? 'opacity-100' : 'opacity-60',
+              !imageLoaded ? 'opacity-0' : 'opacity-100',
             ].join(' ')}
           />
           {/* Checkmark badge */}
