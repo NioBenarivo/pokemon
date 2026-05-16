@@ -8,7 +8,7 @@ export default function Footer({ activeTab, selectedCount }: Props) {
 
   return (
     <p className="text-center text-zinc-400 text-xs mt-5 tracking-wide">
-      Click cards to select, then tap Add to Binder
+      Hold a card to select it, then tap Add to Binder
     </p>
   )
 }

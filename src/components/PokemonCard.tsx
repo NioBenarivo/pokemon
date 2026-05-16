@@ -64,10 +64,10 @@ export default function PokemonCard({
           isSelected ? 'ring-2 ring-red-400 ring-offset-2 shadow-lg' : 'shadow-md hover:shadow-xl',
         ].join(' ')}
       >
-        <div className="bg-zinc-900 relative" style={{ paddingBottom: '140%' }}>
+        <div className="bg-zinc-100 relative" style={{ paddingBottom: '140%' }}>
           {!imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-800 animate-pulse">
-              <div className="w-6 h-6 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 animate-pulse">
+              <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-500 animate-spin" />
             </div>
           )}
           <img

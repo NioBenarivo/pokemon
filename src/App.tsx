@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Tabs from './components/Tabs'
 import LoginPage from './pages/LoginPage'
 import AdminPage from './pages/AdminPage'
@@ -10,36 +10,60 @@ import ActionBar from './components/ActionBar'
 import CardGrid from './components/CardGrid'
 import CardLightbox from './components/CardLightbox'
 import Footer from './components/Footer'
-import Pagination from './components/Pagination'
-import { CARDS_PER_PAGE } from './data/cards'
 import { useAuth } from './hooks/useAuth'
-import { useCards } from './hooks/useCards'
+import { useInfiniteCards } from './hooks/useInfiniteCards'
 import { useOwnedCards } from './hooks/useOwnedCards'
+import type { Card } from './data/cards'
 
 export default function App() {
   const { user, loading: authLoading, signOut, isAdmin } = useAuth()
-  const { cards, loading: cardsLoading } = useCards(user?.id ?? '')
   const { owned, addMultiple, removeMultiple } = useOwnedCards(user?.id ?? '')
 
-  const [currentPage, setCurrentPage] = useState(1)
   const [activeTab, setActiveTab] = useState<'all' | 'binder'>('all')
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
-  const [lightboxCard, setLightboxCard] = useState<typeof cards[number] | null>(null)
+  const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
   const [adding, setAdding] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedPack, setSelectedPack] = useState<string | null>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 350)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  const { cards, packs, dbTotal, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
+    activeTab,
+    searchQuery: debouncedSearch,
+    selectedPack,
+    ownedIds: owned,
+  })
+
+  // Sentinel div ref — use state so the effect re-runs when it mounts
+  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null)
+  const loadMoreRef = useRef(loadMore)
+  loadMoreRef.current = loadMore
+
+  useEffect(() => {
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMoreRef.current() },
+      { rootMargin: '300px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [sentinel])
 
   if (authLoading) return <LoadingScreen message="Loading..." />
   if (!user) return <LoginPage />
   if (isAdmin) return <AdminPage onSignOut={signOut} />
-  if (cardsLoading) return <LoadingScreen message="Loading cards..." />
+  if (loading) return <LoadingScreen message="Loading cards..." />
 
   const username = user.email?.split('@')[0] ?? 'Trainer'
 
   function handleTabChange(tab: 'all' | 'binder') {
     setActiveTab(tab)
-    setCurrentPage(1)
     setSelected(new Set())
     setSelectMode(false)
     setSearchQuery('')
@@ -62,7 +86,7 @@ export default function App() {
     setSelected(new Set())
   }
 
-  function handleCardClick(card: typeof cards[number]) {
+  function handleCardClick(card: Card) {
     if (selectMode) {
       toggleSelected(card.id)
     } else {
@@ -70,7 +94,7 @@ export default function App() {
     }
   }
 
-  function handleCardLongPress(card: typeof cards[number]) {
+  function handleCardLongPress(card: Card) {
     if (activeTab === 'all' && owned.has(card.id)) return
     if (!selectMode) setSelectMode(true)
     toggleSelected(card.id)
@@ -94,41 +118,22 @@ export default function App() {
     setAdding(false)
   }
 
-  const tabCards = activeTab === 'binder'
-    ? cards.filter(c => owned.has(c.id))
-    : cards
-
-  const availablePacks = [...new Set(tabCards.map(c => c.pack))].sort()
-
-  const displayCards = tabCards
-    .filter(c => !selectedPack || c.pack === selectedPack)
-    .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-
-  const totalPages = Math.ceil(displayCards.length / CARDS_PER_PAGE)
-  const startIdx = (currentPage - 1) * CARDS_PER_PAGE
-  const pageCards = displayCards.slice(startIdx, startIdx + CARDS_PER_PAGE)
-
   return (
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
         <Header username={username} onSignOut={signOut} />
 
-        <StatsBar
-          ownedCount={owned.size}
-          totalCount={cards.length}
-          currentPage={currentPage}
-          totalPages={totalPages}
-        />
+        <StatsBar ownedCount={owned.size} totalCount={dbTotal} />
 
         <Tabs active={activeTab} binderCount={owned.size} onChange={handleTabChange} />
 
         <SearchFilter
           searchQuery={searchQuery}
-          onSearchChange={value => { setSearchQuery(value); setCurrentPage(1) }}
-          availablePacks={availablePacks}
+          onSearchChange={value => setSearchQuery(value)}
+          availablePacks={packs}
           selectedPack={selectedPack}
-          onPackChange={pack => { setSelectedPack(pack); setCurrentPage(1) }}
+          onPackChange={pack => setSelectedPack(pack)}
         />
 
         <ActionBar
@@ -142,26 +147,24 @@ export default function App() {
         />
 
         <CardGrid
-          pageCards={pageCards}
+          cards={cards}
           owned={owned}
           selected={selected}
           activeTab={activeTab}
           selectMode={selectMode}
-          searchQuery={searchQuery}
+          reloading={reloading}
+          searchQuery={debouncedSearch}
           selectedPack={selectedPack}
-          hasCards={displayCards.length > 0}
           onCardClick={handleCardClick}
           onCardLongPress={handleCardLongPress}
         />
 
-        {displayCards.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPrev={() => setCurrentPage(p => Math.max(1, p - 1))}
-            onNext={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            onGoToPage={setCurrentPage}
-          />
+        <div ref={setSentinel} className="h-1" />
+
+        {loadingMore && (
+          <div className="flex justify-center py-6">
+            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+          </div>
         )}
 
         <Footer activeTab={activeTab} selectedCount={selected.size} />
