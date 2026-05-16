@@ -50,7 +50,7 @@ export function useAdminCards() {
   // Also used to refresh the list after failed operations.
   async function fetchAll() {
     setLoading(true)
-    const { data } = await supabase.from('cards').select('*').order('id')
+    const { data } = await supabase.from('cards').select('*').order('id', { ascending: false })
     if (data) setCards(data as Card[])
     setLoading(false)
   }
@@ -72,7 +72,7 @@ export function useAdminCards() {
     const { data, error } = await supabase.from('cards').insert(input).select().single()
 
     if (!error && data) {
-      setCards(prev => [...prev, data as Card])  // add to end of list
+      setCards(prev => [data as Card, ...prev])  // add to end of list
       clearCardsCache()                           // invalidate the user-facing cache
     }
 

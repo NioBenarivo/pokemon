@@ -193,13 +193,20 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
               className="hidden"
             />
             {(preview || form.image) && (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-1.5 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
-              >
-                {CARD_FORM.IMAGE_CHANGE}
-              </button>
+              <div className="mt-1.5 flex items-center justify-between">
+                {file && (
+                  <span className="text-xs text-zinc-400 font-mono truncate max-w-[60%]">
+                    {file.name}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors ml-auto"
+                >
+                  {CARD_FORM.IMAGE_CHANGE}
+                </button>
+              </div>
             )}
           </div>
 
