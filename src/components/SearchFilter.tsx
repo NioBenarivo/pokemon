@@ -1,9 +1,28 @@
+// ─────────────────────────────────────────────────────────────
+// components/SearchFilter.tsx
+//
+// The search box and pack dropdown that filters the card grid.
+//
+// Search box:
+//   Typing here updates searchQuery in App.tsx, which is debounced
+//   (350ms delay) before being sent to useInfiniteCards. This prevents
+//   a new database query firing on every single keystroke.
+//   An X button appears when there's text so the user can clear it quickly.
+//
+// Pack dropdown:
+//   Only shows when there are at least 2 packs available.
+//   Selecting a pack filters cards to only that set.
+//   Selecting "All packs" resets the filter (passes null to onPackChange).
+// ─────────────────────────────────────────────────────────────
+
+import { SEARCH } from '../constants/strings'
+
 interface Props {
-  searchQuery: string
-  onSearchChange: (value: string) => void
-  availablePacks: string[]
-  selectedPack: string | null
-  onPackChange: (pack: string | null) => void
+  searchQuery: string                          // current text in the search box
+  onSearchChange: (value: string) => void      // called on every keystroke
+  availablePacks: string[]                     // pack names for the dropdown
+  selectedPack: string | null                  // currently selected pack (null = all)
+  onPackChange: (pack: string | null) => void  // called when the dropdown changes
 }
 
 export default function SearchFilter({
@@ -27,7 +46,7 @@ export default function SearchFilter({
           type="text"
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
-          placeholder="Search cards..."
+          placeholder={SEARCH.PLACEHOLDER}
           className="w-full pl-8 pr-8 py-2 text-sm rounded-lg border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
         />
         {searchQuery && (
@@ -49,7 +68,7 @@ export default function SearchFilter({
           onChange={e => onPackChange(e.target.value || null)}
           className="py-2 px-3 text-sm rounded-lg border border-zinc-200 text-zinc-700 bg-white focus:outline-none focus:border-zinc-400 transition-colors appearance-none cursor-pointer shrink-0"
         >
-          <option value="">All packs</option>
+          <option value="">{SEARCH.ALL_PACKS}</option>
           {availablePacks.map(pack => (
             <option key={pack} value={pack}>{pack}</option>
           ))}

@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────
+// components/CheckIcon.tsx
+//
+// A tiny white checkmark SVG icon.
+// Used inside the circular badge on PokemonCard to indicate
+// that a card is owned or selected.
+// ─────────────────────────────────────────────────────────────
+
 export default function CheckIcon() {
   return (
     <svg

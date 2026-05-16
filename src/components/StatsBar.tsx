@@ -1,6 +1,17 @@
+// ─────────────────────────────────────────────────────────────
+// components/StatsBar.tsx
+//
+// Displays the user's collection progress as "X / Y collected".
+//
+//   ownedCount — how many cards are in the user's binder
+//   totalCount — the total number of cards in the database
+//
+// Example output: "18 / 120 collected"
+// ─────────────────────────────────────────────────────────────
+
 interface Props {
-  ownedCount: number
-  totalCount: number
+  ownedCount: number   // cards in the user's binder
+  totalCount: number   // all cards in the database
 }
 
 export default function StatsBar({ ownedCount, totalCount }: Props) {

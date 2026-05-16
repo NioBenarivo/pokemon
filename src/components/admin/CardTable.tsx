@@ -1,9 +1,23 @@
+// ─────────────────────────────────────────────────────────────
+// components/admin/CardTable.tsx
+//
+// A scrollable table listing all cards in the database.
+// Each row shows the card's ID, name, pack, image path,
+// and Edit / Delete action buttons.
+//
+// Clicking Edit → opens CardFormModal pre-filled with that card's data
+// Clicking Delete → opens the delete confirmation dialog in AdminPage
+//
+// The table has overflow-x-auto so it scrolls horizontally on small
+// screens rather than breaking the layout.
+// ─────────────────────────────────────────────────────────────
+
 import { type Card } from '../../data/cards'
 
 interface Props {
-  cards: Card[]
-  onEdit: (card: Card) => void
-  onDelete: (card: Card) => void
+  cards: Card[]                   // the (possibly filtered) list of cards to display
+  onEdit: (card: Card) => void    // called when the Edit button is clicked
+  onDelete: (card: Card) => void  // called when the Delete button is clicked
 }
 
 export default function CardTable({ cards, onEdit, onDelete }: Props) {

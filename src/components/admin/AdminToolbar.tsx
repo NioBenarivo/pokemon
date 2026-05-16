@@ -1,12 +1,29 @@
+// ─────────────────────────────────────────────────────────────
+// components/admin/AdminToolbar.tsx
+//
+// The search bar and "New Card" button row in the admin panel.
+//
+// Search here is client-side (no database query) because the admin
+// page already loads ALL cards into memory. The filtering happens
+// instantly in AdminPage.tsx using Array.filter().
+//
+// The count text below adapts:
+//   Not filtering → "120 cards total"
+//   Filtering     → "3 of 120 cards"
+// ─────────────────────────────────────────────────────────────
+
+import { ADMIN } from '../../constants/strings'
+
 interface Props {
-  search: string
+  search: string                        // current search text
   onSearchChange: (value: string) => void
-  totalCount: number
-  filteredCount: number
-  onNewCard: () => void
+  totalCount: number                    // total cards in the database
+  filteredCount: number                 // cards matching the current search
+  onNewCard: () => void                 // opens the create card modal
 }
 
 export default function AdminToolbar({ search, onSearchChange, totalCount, filteredCount, onNewCard }: Props) {
+  // true when the search box has any non-whitespace text
   const isFiltering = search.trim().length > 0
 
   return (
@@ -20,7 +37,7 @@ export default function AdminToolbar({ search, onSearchChange, totalCount, filte
             type="text"
             value={search}
             onChange={e => onSearchChange(e.target.value)}
-            placeholder="Search by name or pack..."
+            placeholder={ADMIN.SEARCH_PLACEHOLDER}
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
           />
         </div>
@@ -28,7 +45,7 @@ export default function AdminToolbar({ search, onSearchChange, totalCount, filte
           onClick={onNewCard}
           className="text-sm font-semibold text-white bg-zinc-900 px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors shrink-0"
         >
-          + New Card
+          {ADMIN.NEW_CARD}
         </button>
       </div>
 

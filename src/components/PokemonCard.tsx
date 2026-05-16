@@ -1,36 +1,79 @@
+// ─────────────────────────────────────────────────────────────
+// components/PokemonCard.tsx
+//
+// Renders a single Pokemon card in the grid.
+//
+// There are two visual modes controlled by the "readOnly" prop:
+//
+//   readOnly = false (default) — "All Cards" tab
+//     Shows a card with a label footer (name + pack + owned status badge).
+//     Border color changes to green (owned) or blue (selected).
+//
+//   readOnly = true — "My Binder" tab
+//     Cleaner card-only view with a hover overlay showing name/pack.
+//     Selection badge turns red (for removal) instead of blue.
+//
+// Interaction model:
+//   Short tap/click → open the lightbox (full-screen view)
+//   Long press (hold 500ms) → enter select mode and toggle this card
+//
+// The long-press is implemented manually using pointer events + a timer
+// because there's no native "long press" event in the browser.
+// ─────────────────────────────────────────────────────────────
+
 import type { Card } from '../data/cards'
 import { useState, useRef } from 'react'
 import { R2_BASE } from '../data/cards'
 import CheckIcon from './CheckIcon'
-
-const LONG_PRESS_MS = 500
+import { LONG_PRESS_MS } from '../constants/config'
+import { CARD } from '../constants/strings'
 
 interface Props {
   card: Card
-  isOwned: boolean
-  isSelected?: boolean
-  selectMode?: boolean
-  onClick?: () => void
-  onLongPress?: () => void
-  readOnly?: boolean
+  isOwned: boolean        // true if this card is in the user's binder
+  isSelected?: boolean    // true if the user has tapped this card in select mode
+  selectMode?: boolean    // true if any card is currently selected (selection is active)
+  onClick?: () => void    // fires on short tap
+  onLongPress?: () => void // fires after holding for 500ms
+  readOnly?: boolean      // true on the Binder tab — changes the visual layout
 }
 
 export default function PokemonCard({
   card, isOwned, isSelected = false, selectMode = false,
   onClick, onLongPress, readOnly = false,
 }: Props) {
+
+  // Controls whether the card image is visible yet.
+  // Images start hidden (opacity-0) and fade in once loaded to avoid
+  // a jarring flash of a broken/blank image area.
   const [imageLoaded, setImageLoaded] = useState(false)
+
+  // Holds the setTimeout reference for the long-press timer.
+  // We store it in a ref (not state) because changing it shouldn't
+  // cause a re-render — it's just a timer ID we need to cancel.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Tracks whether the current press registered as a long press.
+  // This is used in handleClick to avoid triggering both long press
+  // AND click when the user releases after a long hold.
   const didLongPressRef = useRef(false)
 
+
+  // ── Long press detection ─────────────────────────────────────────────────
+
+  // Called when the user presses down (finger touch or mouse button)
   function startPress() {
     didLongPressRef.current = false
+
+    // Start a timer — if the user holds for 500ms, fire onLongPress
     timerRef.current = setTimeout(() => {
       didLongPressRef.current = true
-      onLongPress?.()
+      onLongPress?.()  // the ?. means: only call if onLongPress was provided
     }, LONG_PRESS_MS)
   }
 
+  // Called when the user releases, moves away, or the press is cancelled.
+  // Clears the timer so a short tap doesn't accidentally trigger long press.
   function cancelPress() {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
@@ -38,6 +81,9 @@ export default function PokemonCard({
     }
   }
 
+  // Called when a click fires (after pointerUp).
+  // If it was actually a long press, we ignore the click — the long press
+  // handler already ran, and we don't want to also open the lightbox.
   function handleClick() {
     if (didLongPressRef.current) {
       didLongPressRef.current = false
@@ -46,11 +92,19 @@ export default function PokemonCard({
     onClick?.()
   }
 
+
+  // ── Interaction props — shared between both visual modes ─────────────────
+  //
+  // We use "pointer" events instead of "mouse" or "touch" events because
+  // pointer events work on both touch screens and desktop mice with one API.
+  //
+  // onContextMenu: e.preventDefault() — suppresses the browser's right-click
+  // menu on desktop and the "copy/select" popup on mobile long press.
   const interactionProps = {
     onPointerDown: startPress,
     onPointerUp: cancelPress,
-    onPointerLeave: cancelPress,
-    onPointerCancel: cancelPress,
+    onPointerLeave: cancelPress,   // user dragged the pointer off the card
+    onPointerCancel: cancelPress,  // OS cancelled the event (e.g. scroll started)
     onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
     onClick: handleClick,
   }
@@ -119,7 +173,7 @@ export default function PokemonCard({
     <div
       {...interactionProps}
       className="cursor-pointer group select-none"
-      title={isOwned ? 'Already in binder' : isSelected ? 'Click to deselect' : selectMode ? 'Click to select' : 'Hold to select'}
+      title={isOwned ? CARD.TOOLTIP_OWNED : isSelected ? CARD.TOOLTIP_DESELECT : selectMode ? CARD.TOOLTIP_SELECT : CARD.TOOLTIP_HOLD}
     >
       <div
         className={[
@@ -183,7 +237,7 @@ export default function PokemonCard({
                   : 'bg-zinc-50 text-zinc-400 border border-zinc-200',
               ].join(' ')}
             >
-              {isOwned ? '✓ Owned' : isSelected ? '+ Selected' : 'Not owned'}
+              {isOwned ? CARD.OWNED : isSelected ? CARD.SELECTED : CARD.NOT_OWNED}
             </span>
           </div>
         </div>

@@ -1,13 +1,35 @@
+// ─────────────────────────────────────────────────────────────
+// components/CardLightbox.tsx
+//
+// A full-screen overlay that shows a single card image large.
+// Opens when the user taps a card (short tap, not long press).
+//
+// How to close it:
+//   • Tap anywhere on the dark background
+//   • Press the X button in the top-right corner
+//   • Press the Escape key (keyboard)
+//
+// The image is displayed with max-h-[85vh] so it always fits on screen
+// regardless of the card's original dimensions.
+// ─────────────────────────────────────────────────────────────
+
 import { useEffect } from 'react'
 import type { Card } from '../data/cards'
 import { R2_BASE } from '../data/cards'
 
 interface Props {
-  card: Card
-  onClose: () => void
+  card: Card       // the card to display
+  onClose: () => void  // called when the user dismisses the lightbox
 }
 
 export default function CardLightbox({ card, onClose }: Props) {
+
+  // Attach a keyboard listener so pressing Escape closes the lightbox.
+  // We use useEffect because we need to attach to the global window object,
+  // which can only be done after the component mounts (not during render).
+  //
+  // The cleanup function removes the listener when the lightbox closes,
+  // so the handler doesn't keep running in the background.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()

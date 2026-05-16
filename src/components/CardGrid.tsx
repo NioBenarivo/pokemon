@@ -1,17 +1,36 @@
+// ─────────────────────────────────────────────────────────────
+// components/CardGrid.tsx
+//
+// Renders the grid of Pokemon cards. Has three possible states:
+//
+//   1. Reloading — filters just changed, show a spinner
+//   2. Empty     — no cards match the current filters, show a message
+//   3. Normal    — render a responsive grid of PokemonCard components
+//
+// This component is "dumb" — it just displays what it receives.
+// All data fetching and state management happens in App.tsx + useInfiniteCards.
+//
+// The grid is responsive:
+//   • 1 column  on phones (< 376px)
+//   • 2 columns on small phones (≥ 376px)
+//   • 3 columns on tablets/desktop (≥ 640px)
+// ─────────────────────────────────────────────────────────────
+
 import { type Card } from '../data/cards'
 import PokemonCard from './PokemonCard'
+import { CARD_GRID } from '../constants/strings'
 
 interface Props {
-  cards: Card[]
-  owned: Set<number>
-  selected: Set<number>
+  cards: Card[]              // the cards to display
+  owned: Set<number>         // card IDs in the user's binder (for the green "owned" badge)
+  selected: Set<number>      // card IDs currently selected (for the blue/red selection badge)
   activeTab: 'all' | 'binder'
-  selectMode: boolean
-  reloading: boolean
-  searchQuery: string
-  selectedPack: string | null
-  onCardClick: (card: Card) => void
-  onCardLongPress: (card: Card) => void
+  selectMode: boolean        // true when any card has been selected
+  reloading: boolean         // true when filters just changed and new cards are loading
+  searchQuery: string        // used to customize the empty-state message
+  selectedPack: string | null // used to customize the empty-state message
+  onCardClick: (card: Card) => void       // short tap → open lightbox (or toggle in select mode)
+  onCardLongPress: (card: Card) => void   // long press → enter select mode
 }
 
 export default function CardGrid({
@@ -41,10 +60,10 @@ export default function CardGrid({
       <div className="bg-zinc-50 rounded-2xl p-5 border border-zinc-200">
         <p className="text-center text-zinc-400 text-sm py-10">
           {searchQuery || selectedPack
-            ? 'No cards match your search.'
+            ? CARD_GRID.EMPTY_SEARCH
             : activeTab === 'binder'
-            ? 'Your binder is empty. Go to All Cards to add some!'
-            : 'No cards found.'}
+            ? CARD_GRID.EMPTY_BINDER
+            : CARD_GRID.EMPTY_DEFAULT}
         </p>
       </div>
     )
