@@ -32,7 +32,10 @@ export default {
     const key = `cards/${filename}`
 
     await env.BUCKET.put(key, file.stream(), {
-      httpMetadata: { contentType: file.type },
+      httpMetadata: {
+        contentType: file.type,
+        cacheControl: 'public, max-age=2592000', // 30 days
+      },
     })
 
     return new Response(JSON.stringify({ path: key }), {
