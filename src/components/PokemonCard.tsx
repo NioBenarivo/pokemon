@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
 import type { Card } from '../data/cards'
+import { useState, useRef } from 'react'
 import { R2_BASE } from '../data/cards'
+import CheckIcon from './CheckIcon'
 
 const LONG_PRESS_MS = 500
 
@@ -95,11 +96,7 @@ export default function PokemonCard({
                 : 'opacity-0 scale-50',
             ].join(' ')}
           >
-            {isSelected && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
+            {isSelected && <CheckIcon />}
           </div>
 
           {/* Gradient overlay */}
@@ -163,11 +160,7 @@ export default function PokemonCard({
                 : 'opacity-0 scale-50',
             ].join(' ')}
           >
-            {(isOwned || isSelected) && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
+            {(isOwned || isSelected) && <CheckIcon />}
           </div>
         </div>
 

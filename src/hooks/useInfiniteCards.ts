@@ -40,11 +40,16 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
     : ''
 
   // Fetch total card count once
-  useEffect(() => {
-    supabase
+  async function fetchTotal() {
+    const { count, error } = await supabase
       .from('cards')
       .select('*', { count: 'exact', head: true })
-      .then(({ count }) => setDbTotal(count ?? 0))
+    if (error) { console.error('Failed to fetch card count:', error.message); return }
+    setDbTotal(count ?? 0)
+  }
+  
+  useEffect(() => {
+    fetchTotal()
   }, [])
 
   // Fetch available packs for the filter dropdown
@@ -63,7 +68,8 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
 
     let q = supabase.from('cards').select('pack')
     if (activeTab === 'binder') q = q.in('id', [...ownedIds])
-    q.then(({ data }) => {
+    q.then(({ data, error }) => {
+      if (error) { console.error('Failed to fetch packs:', error.message); return }
       const unique = [...new Set((data ?? []).map(r => r.pack))].sort()
       packsCache.current.set(key, unique)
       setPacks(unique)
@@ -121,8 +127,14 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
       setReloading(true)
     }
 
-    buildQuery(0).then(({ data }) => {
+    buildQuery(0).then(({ data, error }) => {
       if (gen !== genRef.current) return
+      if (error) {
+        console.error('Failed to fetch cards:', error.message)
+        setLoading(false)
+        setReloading(false)
+        return
+      }
       const fetched = (data ?? []) as Card[]
       const more = fetched.length === PAGE_SIZE
       const offset = fetched.length
@@ -143,7 +155,14 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
     busyRef.current = true
     setLoadingMore(true)
 
-    const { data } = await buildQuery(offsetRef.current)
+    const { data, error } = await buildQuery(offsetRef.current)
+    if (error) {
+      console.error('Failed to load more cards:', error.message)
+      busyRef.current = false
+      setLoadingMore(false)
+      return
+    }
+
     if (gen !== genRef.current) {
       busyRef.current = false
       setLoadingMore(false)
@@ -167,5 +186,5 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
     setLoadingMore(false)
   }, [hasMore, activeTab, searchQuery, selectedPack, ownedKey])
 
-  return { cards, packs, dbTotal, loading, reloading, loadingMore, hasMore, loadMore }
+  return { cards, packs, dbTotal, loading, reloading, loadingMore, hasMore, loadMore, fetchTotal }
 }

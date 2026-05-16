@@ -6,6 +6,8 @@ import CardFormModal from '../components/admin/CardFormModal'
 import AdminHeader from '../components/admin/AdminHeader'
 import AdminToolbar from '../components/admin/AdminToolbar'
 import LoadingScreen from '../components/LoadingScreen'
+import Toast from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 
 interface Props {
   onSignOut: () => void
@@ -13,6 +15,8 @@ interface Props {
 
 export default function AdminPage({ onSignOut }: Props) {
   const { cards, loading, createCard, updateCard, deleteCard } = useAdminCards()
+  const { toasts, showToast, removeToast } = useToast()
+
   const [search, setSearch] = useState('')
   const [modalCard, setModalCard] = useState<Card | null | undefined>(undefined)
   const [deleteTarget, setDeleteTarget] = useState<Card | null>(null)
@@ -31,8 +35,14 @@ export default function AdminPage({ onSignOut }: Props) {
     : cards
 
   async function handleSave(input: Parameters<typeof createCard>[0]) {
-    if (modalCard) return updateCard(modalCard.id, input)
-    return createCard(input)
+    const error = modalCard
+      ? await updateCard(modalCard.id, input)
+      : await createCard(input)
+  
+    if (!error) {
+      showToast(modalCard ? 'Card updated ✓' : 'Card created ✓')
+    }
+    return error
   }
 
   async function handleConfirmDelete() {
@@ -43,6 +53,7 @@ export default function AdminPage({ onSignOut }: Props) {
     if (error) {
       setDeleteError((error as { message?: string }).message ?? 'Failed to delete.')
     } else {
+      showToast('Card deleted')
       setDeleteTarget(null)
     }
   }
@@ -106,6 +117,8 @@ export default function AdminPage({ onSignOut }: Props) {
           </div>
         </div>
       )}
+
+      <Toast toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

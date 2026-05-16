@@ -13,11 +13,14 @@ import Footer from './components/Footer'
 import { useAuth } from './hooks/useAuth'
 import { useInfiniteCards } from './hooks/useInfiniteCards'
 import { useOwnedCards } from './hooks/useOwnedCards'
+import Toast from './components/Toast'
+import { useToast } from './hooks/useToast'
 import type { Card } from './data/cards'
 
 export default function App() {
   const { user, loading: authLoading, signOut, isAdmin } = useAuth()
   const { owned, addMultiple, removeMultiple } = useOwnedCards(user?.id ?? '')
+  const { toasts, showToast, removeToast } = useToast()
 
   const [activeTab, setActiveTab] = useState<'all' | 'binder'>('all')
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -33,7 +36,7 @@ export default function App() {
     return () => clearTimeout(t)
   }, [searchQuery])
 
-  const { cards, packs, dbTotal, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
+  const { cards, packs, dbTotal, loading, reloading, loadingMore, loadMore, fetchTotal } = useInfiniteCards({
     activeTab,
     searchQuery: debouncedSearch,
     selectedPack,
@@ -104,6 +107,8 @@ export default function App() {
     if (selected.size === 0) return
     setAdding(true)
     await addMultiple([...selected])
+    await fetchTotal()
+    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} added to binder ✓`)
     setSelected(new Set())
     setSelectMode(false)
     setAdding(false)
@@ -113,6 +118,8 @@ export default function App() {
     if (selected.size === 0) return
     setAdding(true)
     await removeMultiple([...selected])
+    await fetchTotal()
+    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} removed from binder`)
     setSelected(new Set())
     setSelectMode(false)
     setAdding(false)
@@ -174,6 +181,8 @@ export default function App() {
       {lightboxCard && (
         <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
       )}
+
+      <Toast toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

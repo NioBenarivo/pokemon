@@ -45,6 +45,12 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
     setError(null)
   }, [card])
 
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview)
+    }
+  }, [preview])
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
@@ -52,7 +58,10 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null
     setFile(selected)
-    setPreview(selected ? URL.createObjectURL(selected) : null)
+    setPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return selected ? URL.createObjectURL(selected) : null
+    })
   }
 
   async function handleSubmit(e: React.FormEvent) {
