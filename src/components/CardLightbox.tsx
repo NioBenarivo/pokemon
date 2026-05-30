@@ -15,7 +15,6 @@
 
 import { useEffect } from 'react'
 import type { Card } from '../data/cards'
-import { R2_BASE } from '../data/cards'
 
 interface Props {
   card: Card       // the card to display
@@ -54,7 +53,7 @@ export default function CardLightbox({ card, onClose }: Props) {
       </button>
 
       <img
-        src={`${R2_BASE}/${card.image}`}
+        src={card.image_url}
         alt={card.name}
         className="max-h-[85vh] max-w-full object-contain rounded-xl shadow-2xl"
         onClick={e => e.stopPropagation()}

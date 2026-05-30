@@ -36,7 +36,7 @@ interface Props {
 }
 
 // The default empty form state for "New Card" mode
-const EMPTY: CardInput = { name: '', pack: '', image: '' }
+const EMPTY: CardInput = { name: '', pack: '', image_url: '', pokemon_id: undefined }
 
 
 // Uploads an image file to Cloudflare R2 via a Cloudflare Worker.
@@ -70,7 +70,7 @@ async function uploadImage(file: File): Promise<string> {
 
   // The Worker responds with JSON: { path: "cards/1703123456789.webp" }
   const { path } = await res.json()
-  return path
+  return `${import.meta.env.VITE_R2_BASE_URL}/${path}`
 }
 
 export default function CardFormModal({ card, onSave, onClose }: Props) {
@@ -82,7 +82,7 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setForm(card ? { name: card.name, pack: card.pack, image: card.image } : EMPTY)
+    setForm(card ? { name: card.name, pack: card.pack, image_url: card.image_url, pokemon_id: card.pokemon_id } : EMPTY)
     setFile(null)
     setPreview(null)
     setError(null)
@@ -113,7 +113,7 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
       setError(CARD_FORM.ERROR_REQUIRED)
       return
     }
-    if (!file && !form.image.trim()) {
+    if (!file && !form.image_url.trim()) {
       setError(CARD_FORM.ERROR_IMAGE)
       return
     }
@@ -122,13 +122,13 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
     setError(null)
 
     try {
-      let imagePath = form.image
+      let imageUrl = form.image_url
 
       if (file) {
-        imagePath = await uploadImage(file)
+        imageUrl = await uploadImage(file)
       }
 
-      const err = await onSave({ ...form, image: imagePath })
+      const err = await onSave({ ...form, image_url: imageUrl })
       if (err) {
         setError((err as { message?: string }).message ?? CARD_FORM.ERROR_GENERIC)
       } else {
@@ -157,7 +157,7 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
               <label className="block text-xs font-medium text-zinc-500 mb-1">{label}</label>
               <input
                 name={name}
-                value={form[name as keyof CardInput]}
+                value={(form[name as keyof CardInput] ?? '') as string}
                 onChange={handleChange}
                 placeholder={placeholder}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
@@ -174,8 +174,8 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
             >
               {preview ? (
                 <img src={preview} alt="Preview" className="max-h-56 object-contain" />
-              ) : form.image ? (
-                <p className="text-xs text-zinc-400 font-mono text-center break-all">{form.image}</p>
+              ) : form.image_url ? (
+                <p className="text-xs text-zinc-400 font-mono text-center break-all">{form.image_url}</p>
               ) : (
                 <>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7 text-zinc-300">
@@ -192,7 +192,7 @@ export default function CardFormModal({ card, onSave, onClose }: Props) {
               onChange={handleFileChange}
               className="hidden"
             />
-            {(preview || form.image) && (
+            {(preview || form.image_url) && (
               <div className="mt-1.5 flex items-center justify-between">
                 {file && (
                   <span className="text-xs text-zinc-400 font-mono truncate max-w-[60%]">

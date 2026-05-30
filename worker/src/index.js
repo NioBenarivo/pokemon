@@ -24,12 +24,13 @@ export default {
     const formData = await request.formData()
     const file = formData.get('file')
     const filename = formData.get('filename')
+    const folder = (formData.get('folder') ?? 'cards').replace(/[^a-z0-9/_-]/gi, '')
 
     if (!file || !filename) {
       return new Response('Missing file or filename', { status: 400 })
     }
 
-    const key = `cards/${filename}`
+    const key = `${folder}/${filename}`
 
     await env.BUCKET.put(key, file.stream(), {
       httpMetadata: {

@@ -33,7 +33,7 @@ interface Filters {
   activeTab: 'all' | 'binder'
   searchQuery: string
   selectedPack: string | null
-  ownedIds: Set<number>  // which card IDs the user owns
+  ownedIds: Set<string>  // which card IDs the user owns
 }
 
 
@@ -98,7 +98,7 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
   //
   // We only do this for the binder tab because "All Cards" doesn't filter by owned.
   const ownedKey = activeTab === 'binder'
-    ? [...ownedIds].sort((a, b) => a - b).join(',')
+    ? [...ownedIds].sort().join(',')
     : ''
 
 
@@ -109,7 +109,7 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
   // just give us the total count. This is very fast.
   async function fetchTotal() {
     const { count, error } = await supabase
-      .from('cards')
+      .from('scraped_cards')
       .select('*', { count: 'exact', head: true })
     if (error) { console.error('Failed to fetch card count:', error.message); return }
     setDbTotal(count ?? 0)
@@ -146,7 +146,7 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
     }
 
     // Cache miss: fetch distinct pack names from the database
-    let q = supabase.from('cards').select('pack')
+    let q = supabase.from('scraped_cards').select('pack')
     if (activeTab === 'binder') q = q.in('id', [...ownedIds])  // only owned cards' packs
 
     q.then(({ data, error }) => {
@@ -173,7 +173,7 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
   // The % wildcards mean "anything before or after the search term".
   function buildQuery(from: number) {
     let q = supabase
-      .from('cards')
+      .from('scraped_cards')
       .select('*', { count: 'exact' })
       .order('id')
       .range(from, from + PAGE_SIZE - 1)

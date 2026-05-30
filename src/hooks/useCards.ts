@@ -45,7 +45,7 @@ export function useCards(userId: string) {
       // .select('*') means "return all columns" (id, name, pack, image)
       // .order('id') sorts cards by their ID number (1, 2, 3...)
       const { data, error } = await supabase
-        .from('cards')
+        .from('scraped_cards')
         .select('*')
         .order('id')
 

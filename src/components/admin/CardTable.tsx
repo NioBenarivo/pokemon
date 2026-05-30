@@ -45,7 +45,7 @@ export default function CardTable({ cards, onEdit, onDelete }: Props) {
               <td className="px-4 py-3 text-zinc-400 font-mono text-xs">{card.id}</td>
               <td className="px-4 py-3 text-zinc-800 font-medium">{card.name}</td>
               <td className="px-4 py-3 text-zinc-500">{card.pack}</td>
-              <td className="px-4 py-3 text-zinc-400 font-mono text-xs max-w-[200px] truncate">{card.image}</td>
+              <td className="px-4 py-3 text-zinc-400 font-mono text-xs max-w-[200px] truncate">{card.image_url}</td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <button

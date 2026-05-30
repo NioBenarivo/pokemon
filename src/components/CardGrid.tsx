@@ -22,8 +22,8 @@ import { CARD_GRID } from '../constants/strings'
 
 interface Props {
   cards: Card[]              // the cards to display
-  owned: Set<number>         // card IDs in the user's binder (for the green "owned" badge)
-  selected: Set<number>      // card IDs currently selected (for the blue/red selection badge)
+  owned: Set<string>         // card IDs in the user's binder (for the green "owned" badge)
+  selected: Set<string>      // card IDs currently selected (for the blue/red selection badge)
   activeTab: 'all' | 'binder'
   selectMode: boolean        // true when any card has been selected
   reloading: boolean         // true when filters just changed and new cards are loading

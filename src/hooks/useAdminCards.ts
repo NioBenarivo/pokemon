@@ -32,7 +32,7 @@ import { clearCardsCache } from '../lib/cardsCache'
 // Omit<Card, 'id'> is a TypeScript utility that means:
 //   "take the Card type and remove the 'id' field"
 //   → { name: string, pack: string, image: string }
-export type CardInput = Omit<Card, 'id'>
+export type CardInput = Omit<Card, 'id' | 'pokemon_id'> & { pokemon_id?: number }
 
 export function useAdminCards() {
   const [cards, setCards] = useState<Card[]>([])
@@ -50,7 +50,7 @@ export function useAdminCards() {
   // Also used to refresh the list after failed operations.
   async function fetchAll() {
     setLoading(true)
-    const { data } = await supabase.from('cards').select('*').order('id', { ascending: false })
+    const { data } = await supabase.from('scraped_cards').select('*').order('id', { ascending: false })
     if (data) setCards(data as Card[])
     setLoading(false)
   }
@@ -69,7 +69,7 @@ export function useAdminCards() {
   //
   // Returns the error object (or null) so the caller can show an error message.
   async function createCard(input: CardInput) {
-    const { data, error } = await supabase.from('cards').insert(input).select().single()
+    const { data, error } = await supabase.from('scraped_cards').insert(input).select().single()
 
     if (!error && data) {
       setCards(prev => [data as Card, ...prev])  // add to end of list
@@ -89,31 +89,22 @@ export function useAdminCards() {
   //
   // After success, we patch local state by mapping over the cards and
   // replacing just the one that changed. This avoids a full re-fetch.
-  async function updateCard(id: number, input: CardInput) {
-    const { error } = await supabase.from('cards').update(input).eq('id', id)
+  async function updateCard(id: string, input: CardInput) {
+    const { error } = await supabase.from('scraped_cards').update(input).eq('id', id)
 
     if (!error) {
-      // Replace the old card object with the updated one
-      setCards(prev => prev.map(c => c.id === id ? { id, ...input } : c))
+      setCards(prev => prev.map(c => c.id === id ? { id, pokemon_id: input.pokemon_id ?? 0, ...input } : c))
       clearCardsCache()
     }
 
     return error
   }
 
-
-  // ── deleteCard ───────────────────────────────────────────────────────────
-  //
-  // Permanently deletes a card from the database.
-  // This also removes the card from every user's binder
-  // (Supabase foreign key cascade handles that automatically).
-  //
-  // After success, we filter the card out of local state.
-  async function deleteCard(id: number) {
-    const { error } = await supabase.from('cards').delete().eq('id', id)
+  async function deleteCard(id: string) {
+    const { error } = await supabase.from('scraped_cards').delete().eq('id', id)
 
     if (!error) {
-      setCards(prev => prev.filter(c => c.id !== id))  // remove from list
+      setCards(prev => prev.filter(c => c.id !== id))
       clearCardsCache()
     }
 

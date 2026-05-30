@@ -23,7 +23,6 @@
 
 import type { Card } from '../data/cards'
 import { useState, useRef } from 'react'
-import { R2_BASE } from '../data/cards'
 import CheckIcon from './CheckIcon'
 import { LONG_PRESS_MS } from '../constants/config'
 import { CARD } from '../constants/strings'
@@ -126,7 +125,7 @@ export default function PokemonCard({
             </div>
           )}
           <img
-            src={`${R2_BASE}/${card.image}`}
+            src={card.image_url}
             alt={card.name}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
@@ -188,7 +187,7 @@ export default function PokemonCard({
             </div>
           )}
           <img
-            src={`${R2_BASE}/${card.image}`}
+            src={card.image_url}
             alt={card.name}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
