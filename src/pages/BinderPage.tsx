@@ -80,19 +80,19 @@ async function handleRemove() {
         <Header title="My Binder" subtitle={`${username} · ${owned.size} cards`} onSignOut={signOut} />
 
         {/* Search + Pack filter */}
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex gap-2 mb-3">
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search your cards..."
-            className="flex-1 min-w-[160px] px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
+            className="flex-1 min-w-0 px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
           />
           {packs.length > 0 && (
             <select
               value={selectedPack ?? ''}
               onChange={e => setSelectedPack(e.target.value || null)}
-              className="appearance-none px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors bg-white"
+              className="appearance-none px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors bg-white max-w-[140px]"
             >
               <option value="">All packs</option>
               {packs.map(p => <option key={p} value={p}>{p}</option>)}
