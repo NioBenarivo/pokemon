@@ -3,11 +3,13 @@ import { supabase } from '../lib/supabase'
 
 export function useWishlist(userId: string) {
   const [wishlist, setWishlist] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId) { setLoading(false); return }
 
     async function fetchWishlist() {
+      setLoading(true)
       const ids = new Set<string>()
       const PAGE = 1000
       let from = 0
@@ -27,6 +29,7 @@ export function useWishlist(userId: string) {
       }
 
       setWishlist(ids)
+      setLoading(false)
     }
 
     fetchWishlist()
@@ -62,5 +65,5 @@ export function useWishlist(userId: string) {
     }
   }
 
-  return { wishlist, addToWishlist, removeFromWishlist }
+  return { wishlist, loading, addToWishlist, removeFromWishlist }
 }

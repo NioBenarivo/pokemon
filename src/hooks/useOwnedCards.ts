@@ -3,18 +3,21 @@ import { supabase } from '../lib/supabase'
 
 export function useOwnedCards(userId: string) {
   const [owned, setOwned] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId) { setLoading(false); return }
 
     async function fetchOwned() {
+      setLoading(true)
       const { data, error } = await supabase
         .from('owned_cards')
         .select('card_id')
         .eq('user_id', userId)
 
-      if (error) { console.error('Failed to fetch owned cards:', error.message); return }
+      if (error) { console.error('Failed to fetch owned cards:', error.message) }
       if (data) setOwned(new Set(data.map((r: { card_id: string }) => r.card_id)))
+      setLoading(false)
     }
 
     fetchOwned()
@@ -51,5 +54,5 @@ export function useOwnedCards(userId: string) {
     }
   }
 
-  return { owned, addMultiple, removeMultiple }
+  return { owned, loading, addMultiple, removeMultiple }
 }

@@ -14,7 +14,7 @@ import type { Card } from '../data/cards'
 export default function WishlistPage() {
   const { user, signOut } = useAuth()
   const { owned, addMultiple } = useOwnedCards(user?.id ?? '')
-  const { wishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
+  const { wishlist, loading: wishlistLoading, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
   const [cards, setCards] = useState<Card[]>([])
@@ -169,7 +169,7 @@ export default function WishlistPage() {
           </div>
         )}
 
-        {loading ? (
+        {wishlistLoading || loading ? (
           <div className="flex justify-center py-16">
             <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
           </div>
