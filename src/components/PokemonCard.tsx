@@ -63,7 +63,7 @@ export default function PokemonCard({
         onClick || onLongPress ? 'cursor-pointer' : 'cursor-default',
         isSelected
           ? (removeMode ? 'ring-2 ring-red-400 ring-offset-2 shadow-lg' : 'ring-2 ring-blue-400 ring-offset-2 shadow-lg')
-          : selectMode && isOwned
+          : isOwned
           ? 'ring-2 ring-green-400 ring-offset-2 shadow-lg'
           : 'shadow-md hover:shadow-xl',
       ].join(' ')}
@@ -103,14 +103,14 @@ export default function PokemonCard({
             'transition-all duration-200',
             isSelected
               ? (removeMode ? 'bg-red-400 opacity-100 scale-100' : 'bg-blue-400 opacity-100 scale-100')
-              : selectMode && isOwned
+              : isOwned
               ? 'bg-green-400 opacity-100 scale-100'
               : selectMode
               ? 'bg-white/30 border border-white/60 opacity-100 scale-100'
               : 'opacity-0 scale-50',
           ].join(' ')}
         >
-          {(isSelected || (selectMode && isOwned)) && <CheckIcon />}
+          {(isSelected || isOwned) && <CheckIcon />}
         </div>
 
         {/* Gradient overlay */}
