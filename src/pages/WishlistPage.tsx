@@ -190,7 +190,6 @@ export default function WishlistPage() {
                 selectMode={selectMode}
                 onClick={() => handleCardClick(card)}
                 onLongPress={() => handleCardLongPress(card)}
-                readOnly
               />
             ))}
           </div>

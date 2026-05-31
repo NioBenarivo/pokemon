@@ -148,7 +148,6 @@ export default function PokemonDetailPage() {
                 selectMode={selectMode}
                 onClick={() => handleCardClick(card)}
                 onLongPress={() => handleCardLongPress(card)}
-                readOnly
               />
             ))}
           </div>

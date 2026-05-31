@@ -38,61 +38,7 @@ export const AUTH = {
 } as const
 
 
-// ── Tab labels ────────────────────────────────────────────────
 
-export const TABS = {
-  ALL: 'All Cards',
-  BINDER: 'My Binder',
-} as const
-
-
-// ── Search & filter bar ───────────────────────────────────────
-
-export const SEARCH = {
-  PLACEHOLDER: 'Search cards...',
-  ALL_PACKS: 'All packs',
-} as const
-
-
-// ── Card grid empty states ────────────────────────────────────
-
-export const CARD_GRID = {
-  EMPTY_SEARCH: 'No cards match your search.',
-  EMPTY_BINDER: 'Your binder is empty. Go to All Cards to add some!',
-  EMPTY_DEFAULT: 'No cards found.',
-} as const
-
-
-// ── Footer hint text ──────────────────────────────────────────
-
-export const FOOTER = {
-  HINT: 'Hold a card to select it, then tap Add to Binder',
-} as const
-
-
-// ── Individual card labels and tooltips ───────────────────────
-
-export const CARD = {
-  OWNED: '✓ Owned',
-  SELECTED: '+ Selected',
-  NOT_OWNED: 'Not owned',
-  TOOLTIP_OWNED: 'Already in binder',
-  TOOLTIP_DESELECT: 'Click to deselect',
-  TOOLTIP_SELECT: 'Click to select',
-  TOOLTIP_HOLD: 'Hold to select',
-} as const
-
-
-// ── Action bar (add / remove bar that appears during selection) ───
-
-export const ACTION_BAR = {
-  SELECT_PROMPT: 'Select cards',
-  ADD: 'Add to Binder',
-  REMOVE: 'Remove from Binder',
-  ADDING: 'Adding...',
-  REMOVING: 'Removing...',
-  selectedLabel: (count: number) => `${count} card${count !== 1 ? 's' : ''} selected`,
-} as const
 
 
 // ── Toast notifications ───────────────────────────────────────
