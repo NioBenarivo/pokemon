@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import LoginPage from './pages/LoginPage'
-import AdminPage from './pages/AdminPage'
 import PokemonListPage from './pages/PokemonListPage'
 import PokemonDetailPage from './pages/PokemonDetailPage'
 import CardsPage from './pages/CardsPage'
@@ -11,11 +10,10 @@ import LoadingScreen from './components/LoadingScreen'
 import { LOADING } from './constants/strings'
 
 export default function App() {
-  const { user, loading: authLoading, signOut, isAdmin } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   if (authLoading) return <LoadingScreen message={LOADING.AUTH} />
   if (!user) return <LoginPage />
-  if (isAdmin) return <AdminPage onSignOut={signOut} />
 
   return (
     <Routes>

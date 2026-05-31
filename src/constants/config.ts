@@ -14,14 +14,6 @@ export const LONG_PRESS_MS = 500
 // How many cards are fetched per page in the infinite scroll list.
 export const PAGE_SIZE = 12
 
-// localStorage key for the cached card list (admin page).
-// The "v1" suffix means: bump it to "v2" if the cache structure ever changes,
-// so old cached data is automatically ignored.
-export const CACHE_KEY = 'pokeBinder_cards_v1'
-
-// How long (ms) the localStorage cache stays valid before a fresh fetch is needed.
-export const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
-
 // How long (ms) a toast notification stays on screen before auto-dismissing.
 export const TOAST_DURATION_MS = 3000
 
