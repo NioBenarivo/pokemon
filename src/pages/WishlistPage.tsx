@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import Header from '../components/Header'
 import { useOwnedCards } from '../hooks/useOwnedCards'
@@ -6,12 +6,12 @@ import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
-import { supabase } from '../lib/supabase'
 import { useSearchDebounce } from '../hooks/useSearchDebounce'
 import { useCardSelection } from '../hooks/useCardSelection'
+import { useInfiniteWishlistCards } from '../hooks/useInfiniteWishlistCards'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import Spinner from '../components/Spinner'
 import CardGrid from '../components/CardGrid'
-import type { Card } from '../data/cards'
 
 export default function WishlistPage() {
   const { user, signOut } = useAuth()
@@ -19,51 +19,20 @@ export default function WishlistPage() {
   const { wishlist, loading: wishlistLoading, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
-  const [cards, setCards] = useState<Card[]>([])
-  const [loading, setLoading] = useState(false)
   const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
   const [selectedPack, setSelectedPack] = useState<string | null>(null)
-  const [packs, setPacks] = useState<string[]>([])
   const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection()
   const [acting, setActing] = useState(false)
 
-const wishlistKey = [...wishlist].sort().join(',')
+  const { cards, packs, loading, reloading, loadingMore, loadMore } = useInfiniteWishlistCards({
+    wishlistIds: wishlist,
+    searchQuery: debouncedSearch,
+    selectedPack,
+  })
 
-  // Fetch distinct pack names from wishlisted cards for the filter dropdown
-  useEffect(() => {
-    if (wishlist.size === 0) { setPacks([]); return }
-    supabase
-      .from('scraped_cards')
-      .select('pack')
-      .in('id', [...wishlist])
-      .then(({ data }) => {
-        const unique = [...new Set((data ?? []).map(r => r.pack))].sort()
-        setPacks(unique)
-      })
-  }, [wishlistKey])
+  const { setSentinel } = useInfiniteScroll({ loadMore, loading, reloading, loadingMore })
 
-  // Fetch only the wishlisted cards directly by ID — no infinite scroll needed
-  useEffect(() => {
-    if (wishlist.size === 0) { setCards([]); return }
-
-    setLoading(true)
-    let q = supabase
-      .from('scraped_cards')
-      .select('*')
-      .in('id', [...wishlist])
-      .order('name')
-
-    if (debouncedSearch) q = q.ilike('name', `%${debouncedSearch}%`)
-    if (selectedPack) q = q.eq('pack', selectedPack)
-
-    q.then(({ data, error }) => {
-      if (error) { console.error('Failed to fetch wishlist cards:', error.message); setLoading(false); return }
-      setCards((data ?? []) as Card[])
-      setLoading(false)
-    })
-  }, [wishlistKey, debouncedSearch, selectedPack])
-
-async function handleAddToBinder() {
+  async function handleAddToBinder() {
     if (selected.size === 0) return
     setActing(true)
     const ids = [...selected]
@@ -141,7 +110,7 @@ async function handleAddToBinder() {
           </div>
         )}
 
-        {wishlistLoading || loading ? (
+        {wishlistLoading || loading || reloading ? (
           <div className="flex justify-center py-16">
             <Spinner />
           </div>
@@ -160,6 +129,14 @@ async function handleAddToBinder() {
             onCardClick={handleCardClick}
             onCardLongPress={handleCardLongPress}
           />
+        )}
+
+        <div ref={setSentinel} className="h-1" />
+
+        {loadingMore && (
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
         )}
 
       </div>
