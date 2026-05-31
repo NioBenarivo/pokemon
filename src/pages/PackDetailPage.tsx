@@ -80,7 +80,7 @@ async function handleAddToWishlist() {
             <img
               src={pack.image_url}
               alt={pack.name}
-              className="h-20 w-auto max-w-[80px] object-contain flex-shrink-0"
+              className="h-20 w-auto max-w-[80px] md:h-28 md:max-w-none object-contain flex-shrink-0"
             />
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold text-white leading-tight">{pack.name}</h1>
