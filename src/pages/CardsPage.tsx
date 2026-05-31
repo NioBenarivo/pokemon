@@ -179,7 +179,8 @@ export default function CardsPage() {
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
           onAddToBinder={user ? async () => {
-            await addMultiple([lightboxCard.id])
+            const ok = await addMultiple([lightboxCard.id])
+            if (ok && wishlist.has(lightboxCard.id)) await removeFromWishlist([lightboxCard.id])
             showToast('Added to binder ✓')
           } : undefined}
           onToggleWishlist={user ? () =>

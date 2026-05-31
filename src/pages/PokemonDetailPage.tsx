@@ -66,8 +66,12 @@ export default function PokemonDetailPage() {
   async function handleAddToWishlist() {
     if (selected.size === 0) return
     setAdding(true)
-    await addToWishlist([...selected])
-    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} added to wishlist ✓`)
+    const toAdd = [...selected].filter(id => !wishlist.has(id))
+    if (toAdd.length > 0) await addToWishlist(toAdd)
+    showToast(toAdd.length > 0
+      ? `${toAdd.length} card${toAdd.length > 1 ? 's' : ''} added to wishlist ✓`
+      : 'Already in wishlist'
+    )
     setSelected(new Set())
     setSelectMode(false)
     setAdding(false)
@@ -162,7 +166,8 @@ export default function PokemonDetailPage() {
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
           onAddToBinder={user ? async () => {
-            await addMultiple([lightboxCard.id])
+            const ok = await addMultiple([lightboxCard.id])
+            if (ok && wishlist.has(lightboxCard.id)) await removeFromWishlist([lightboxCard.id])
             showToast('Added to binder ✓')
           } : undefined}
           onToggleWishlist={user ? () =>
