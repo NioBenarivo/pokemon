@@ -4,6 +4,7 @@ import { usePacks } from '../hooks/usePacks'
 import { useAuth } from '../hooks/useAuth'
 import Header from '../components/Header'
 import { usePackOwnedCounts } from '../hooks/usePackOwnedCounts'
+import { usePackWishlistCounts } from '../hooks/usePackWishlistCounts'
 import ProgressBar from '../components/ProgressBar'
 import { SEARCH_DEBOUNCE_MS } from '../constants/config'
 import LoadingScreen from '../components/LoadingScreen'
@@ -12,6 +13,7 @@ export default function PacksListPage() {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const ownedCounts = usePackOwnedCounts(user?.id ?? '')
+  const wishlistCounts = usePackWishlistCounts(user?.id ?? '')
 
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -47,6 +49,7 @@ export default function PacksListPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {packs.map(pack => {
               const owned = ownedCounts.get(pack.id) ?? 0
+              const wishlisted = wishlistCounts.get(pack.id) ?? 0
               return (
                 <button
                   key={pack.id}
@@ -72,6 +75,9 @@ export default function PacksListPage() {
                         <span className="text-[11px] text-zinc-400">{pack.release_date}</span>
                       )}
                     </div>
+                    {user && wishlisted > 0 && (
+                      <p className="text-[11px] text-pink-400 mt-1">♡ {wishlisted} wishlisted</p>
+                    )}
                     {user && <ProgressBar owned={owned} total={pack.card_count} />}
                   </div>
                 </button>

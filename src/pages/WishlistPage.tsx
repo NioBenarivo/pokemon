@@ -115,7 +115,11 @@ export default function WishlistPage() {
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
-        <Header title="Wishlist" subtitle={`${wishlist.size} cards`} onSignOut={signOut} />
+        <Header
+          title="Wishlist"
+          subtitle={selectedPack ? `${cards.length} card${cards.length !== 1 ? 's' : ''} in ${selectedPack}` : `${wishlist.size} cards`}
+          onSignOut={signOut}
+        />
 
         <div className="flex flex-wrap gap-2 mb-5">
           <input

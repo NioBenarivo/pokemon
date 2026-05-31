@@ -76,6 +76,7 @@ export default function PackDetailPage() {
   }
 
   const ownedCount = cards.filter(c => owned.has(c.id)).length
+  const wishlistedCount = cards.filter(c => wishlist.has(c.id)).length
 
   if (loading) return <LoadingScreen message="Loading pack..." />
 
@@ -115,6 +116,9 @@ export default function PackDetailPage() {
                   </>
                 )}
               </div>
+              {user && wishlistedCount > 0 && (
+                <p className="text-[11px] text-pink-300 mt-1.5">♡ {wishlistedCount} wishlisted</p>
+              )}
               {user && <ProgressBar owned={ownedCount} total={pack.card_count ?? cards.length} />}
             </div>
           </div>
