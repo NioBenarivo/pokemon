@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-/**
- * Returns a Map<pack_id, owned_count> for all packs the user has cards from.
- * Paginates through owned_cards joined with scraped_cards to handle large collections.
- */
-export function usePackOwnedCounts(userId: string) {
+type Table = 'owned_cards' | 'wishlisted_cards'
+
+export function usePackCardCounts(userId: string, table: Table) {
   const [counts, setCounts] = useState<Map<number, number>>(new Map())
 
   useEffect(() => {
@@ -18,12 +16,12 @@ export function usePackOwnedCounts(userId: string) {
 
       while (true) {
         const { data, error } = await supabase
-          .from('owned_cards')
+          .from(table)
           .select('scraped_cards(pack_id)')
           .eq('user_id', userId)
           .range(from, from + PAGE - 1)
 
-        if (error) { console.error('Failed to fetch owned counts:', error.message); break }
+        if (error) { console.error(`Failed to fetch ${table} counts:`, error.message); break }
         if (!data?.length) break
 
         for (const row of data) {
@@ -39,7 +37,7 @@ export function usePackOwnedCounts(userId: string) {
     }
 
     fetchCounts()
-  }, [userId])
+  }, [userId, table])
 
   return counts
 }

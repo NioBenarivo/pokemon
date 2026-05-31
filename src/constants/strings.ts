@@ -12,7 +12,6 @@
 export const APP = {
   TITLE: 'Pokémon Wishlist Binder',
   SUBTITLE: 'Collection',
-  DEFAULT_USERNAME: 'Trainer',
 } as const
 
 
@@ -20,7 +19,6 @@ export const APP = {
 
 export const LOADING = {
   AUTH: 'Loading...',
-  CARDS: 'Loading cards...',
 } as const
 
 
@@ -40,15 +38,5 @@ export const AUTH = {
 
 
 
-
-// ── Toast notifications ───────────────────────────────────────
-
-export const TOAST = {
-  CARD_CREATED: 'Card created ✓',
-  CARD_UPDATED: 'Card updated ✓',
-  CARD_DELETED: 'Card deleted',
-  cardsAdded: (count: number) => `${count} card${count > 1 ? 's' : ''} added to binder ✓`,
-  cardsRemoved: (count: number) => `${count} card${count > 1 ? 's' : ''} removed from binder`,
-}
 
 

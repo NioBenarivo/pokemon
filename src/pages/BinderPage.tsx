@@ -1,37 +1,30 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useInfiniteCards } from '../hooks/useInfiniteCards'
 import { useAuth } from '../hooks/useAuth'
 import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useToast } from '../hooks/useToast'
-import PokemonCard from '../components/PokemonCard'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
 import ProgressBar from '../components/ProgressBar'
 import { supabase } from '../lib/supabase'
 import Header from '../components/Header'
-import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
-import type { Card } from '../data/cards'
+import { useSearchDebounce } from '../hooks/useSearchDebounce'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { useCardSelection } from '../hooks/useCardSelection'
+import Spinner from '../components/Spinner'
+import CardGrid from '../components/CardGrid'
 
 export default function BinderPage() {
   const { user, signOut } = useAuth()
   const { owned, loading: ownedLoading, removeMultiple } = useOwnedCards(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
   const [selectedPack, setSelectedPack] = useState<string | null>(null)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [selectMode, setSelectMode] = useState(false)
-  const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
+  const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection()
   const [removing, setRemoving] = useState(false)
-  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(t)
-  }, [searchQuery])
-
-  const { cards, packs, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
+const { cards, packs, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
     activeTab: 'binder',
     searchQuery: debouncedSearch,
     selectedPack,
@@ -67,57 +60,14 @@ export default function BinderPage() {
     return () => { cancelled = true }
   }, [selectedPack, ownedKey])
 
-  const loadMoreRef = useRef(loadMore)
-  loadMoreRef.current = loadMore
+  const { setSentinel } = useInfiniteScroll({ loadMore, loading, reloading, loadingMore })
 
-  const sentinelVisibleRef = useRef(false)
-
-  useEffect(() => {
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        sentinelVisibleRef.current = entry.isIntersecting
-        if (entry.isIntersecting) loadMoreRef.current()
-      },
-      { rootMargin: SCROLL_ROOT_MARGIN }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [sentinel])
-
-  useEffect(() => {
-    if (!loading && !reloading && !loadingMore && sentinelVisibleRef.current) {
-      loadMoreRef.current()
-    }
-  }, [loading, reloading, loadingMore])
-
-  function toggleSelected(cardId: string) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(cardId)) next.delete(cardId)
-      else next.add(cardId)
-      if (next.size === 0) setSelectMode(false)
-      return next
-    })
-  }
-
-  function handleCardClick(card: Card) {
-    if (selectMode) toggleSelected(card.id)
-    else setLightboxCard(card)
-  }
-
-  function handleCardLongPress(card: Card) {
-    if (!selectMode) setSelectMode(true)
-    toggleSelected(card.id)
-  }
-
-  async function handleRemove() {
+async function handleRemove() {
     if (selected.size === 0) return
     setRemoving(true)
     await removeMultiple([...selected])
     showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} removed from binder`)
-    setSelected(new Set())
-    setSelectMode(false)
+    clearSelection()
     setRemoving(false)
   }
 
@@ -163,7 +113,7 @@ export default function BinderPage() {
               {selected.size} selected
             </span>
             <button
-              onClick={() => { setSelected(new Set()); setSelectMode(false) }}
+              onClick={clearSelection}
               className="text-xs text-zinc-400 hover:text-zinc-700 px-3 py-1.5 transition-colors"
             >
               Cancel
@@ -181,7 +131,7 @@ export default function BinderPage() {
         {/* Grid */}
         {ownedLoading || loading || reloading ? (
           <div className="flex justify-center py-16">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+            <Spinner />
           </div>
         ) : cards.length === 0 ? (
           <div className="text-center py-16">
@@ -192,27 +142,22 @@ export default function BinderPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-            {cards.map(card => (
-              <PokemonCard
-                key={card.id}
-                card={card}
-                isOwned={true}
-                isSelected={selected.has(card.id)}
-                selectMode={selectMode}
-                onClick={() => handleCardClick(card)}
-                onLongPress={() => handleCardLongPress(card)}
-                removeMode
-              />
-            ))}
-          </div>
+          <CardGrid
+            cards={cards}
+            owned={owned}
+            selected={selected}
+            selectMode={selectMode}
+            removeMode
+            onCardClick={handleCardClick}
+            onCardLongPress={handleCardLongPress}
+          />
         )}
 
         <div ref={setSentinel} className="h-1" />
 
         {loadingMore && (
           <div className="flex justify-center py-6">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+            <Spinner />
           </div>
         )}
 

@@ -1,29 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePacks } from '../hooks/usePacks'
 import { useAuth } from '../hooks/useAuth'
 import Header from '../components/Header'
-import { usePackOwnedCounts } from '../hooks/usePackOwnedCounts'
-import { usePackWishlistCounts } from '../hooks/usePackWishlistCounts'
+import { usePackCardCounts } from '../hooks/usePackCardCounts'
 import ProgressBar from '../components/ProgressBar'
-import { SEARCH_DEBOUNCE_MS } from '../constants/config'
+import { useSearchDebounce } from '../hooks/useSearchDebounce'
 import LoadingScreen from '../components/LoadingScreen'
 
 export default function PacksListPage() {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
-  const ownedCounts = usePackOwnedCounts(user?.id ?? '')
-  const wishlistCounts = usePackWishlistCounts(user?.id ?? '')
+  const ownedCounts = usePackCardCounts(user?.id ?? '', 'owned_cards')
+  const wishlistCounts = usePackCardCounts(user?.id ?? '', 'wishlisted_cards')
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
 
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(t)
-  }, [searchQuery])
-
-  const { packs, loading } = usePacks(debouncedSearch)
+const { packs, loading } = usePacks(debouncedSearch)
 
   return (
     <div className="bg-white min-h-screen py-10 px-4 font-sans">

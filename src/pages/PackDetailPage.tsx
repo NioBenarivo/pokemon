@@ -5,13 +5,14 @@ import { useAuth } from '../hooks/useAuth'
 import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
-import PokemonCard from '../components/PokemonCard'
+import CardGrid from '../components/CardGrid'
+import { addToBinder } from '../utils/cardActions'
 import SelectActionBar from '../components/SelectActionBar'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
 import LoadingScreen from '../components/LoadingScreen'
 import ProgressBar from '../components/ProgressBar'
-import type { Card } from '../data/cards'
+import { useCardSelection } from '../hooks/useCardSelection'
 
 export default function PackDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,34 +24,10 @@ export default function PackDetailPage() {
 
   const { pack, cards, loading } = usePackCards(Number(id))
 
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [selectMode, setSelectMode] = useState(false)
-  const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
+  const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection(owned)
   const [adding, setAdding] = useState(false)
 
-  function toggleSelected(cardId: string) {
-    if (owned.has(cardId)) return
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(cardId)) next.delete(cardId)
-      else next.add(cardId)
-      if (next.size === 0) setSelectMode(false)
-      return next
-    })
-  }
-
-  function handleCardClick(card: Card) {
-    if (selectMode) toggleSelected(card.id)
-    else setLightboxCard(card)
-  }
-
-  function handleCardLongPress(card: Card) {
-    if (owned.has(card.id)) return
-    if (!selectMode) setSelectMode(true)
-    toggleSelected(card.id)
-  }
-
-  async function handleAddToWishlist() {
+async function handleAddToWishlist() {
     if (selected.size === 0) return
     setAdding(true)
     const toAdd = [...selected].filter(id => !wishlist.has(id))
@@ -59,8 +36,7 @@ export default function PackDetailPage() {
       ? `${toAdd.length} card${toAdd.length > 1 ? 's' : ''} added to wishlist ✓`
       : 'Already in wishlist'
     )
-    setSelected(new Set())
-    setSelectMode(false)
+    clearSelection()
     setAdding(false)
   }
 
@@ -74,8 +50,7 @@ export default function PackDetailPage() {
       if (wishlisted.length) await removeFromWishlist(wishlisted)
     }
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
-    setSelected(new Set())
-    setSelectMode(false)
+    clearSelection()
     setAdding(false)
   }
 
@@ -132,7 +107,7 @@ export default function PackDetailPage() {
           <SelectActionBar
             count={selected.size}
             adding={adding}
-            onCancel={() => { setSelected(new Set()); setSelectMode(false) }}
+            onCancel={clearSelection}
             onWishlist={handleAddToWishlist}
             onAddToBinder={handleAdd}
           />
@@ -142,20 +117,15 @@ export default function PackDetailPage() {
         {cards.length === 0 ? (
           <p className="text-center text-zinc-400 text-sm py-16">No cards found for this pack.</p>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-            {cards.map(card => (
-              <PokemonCard
-                key={card.id}
-                card={card}
-                isOwned={owned.has(card.id)}
-                isSelected={selected.has(card.id)}
-                isWishlisted={wishlist.has(card.id)}
-                selectMode={selectMode}
-                onClick={() => handleCardClick(card)}
-                onLongPress={() => handleCardLongPress(card)}
-              />
-            ))}
-          </div>
+          <CardGrid
+            cards={cards}
+            owned={owned}
+            selected={selected}
+            selectMode={selectMode}
+            wishlist={wishlist}
+            onCardClick={handleCardClick}
+            onCardLongPress={handleCardLongPress}
+          />
         )}
 
       </div>
@@ -166,11 +136,7 @@ export default function PackDetailPage() {
           onClose={() => setLightboxCard(null)}
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
-          onAddToBinder={user ? async () => {
-            const ok = await addMultiple([lightboxCard.id])
-            if (ok && wishlist.has(lightboxCard.id)) await removeFromWishlist([lightboxCard.id])
-            showToast('Added to binder ✓')
-          } : undefined}
+          onAddToBinder={user ? () => addToBinder(lightboxCard.id, addMultiple, wishlist, removeFromWishlist, showToast) : undefined}
           onToggleWishlist={user ? () =>
             wishlist.has(lightboxCard.id)
               ? removeFromWishlist([lightboxCard.id])

@@ -1,6 +1,7 @@
 import type { Card } from '../data/cards'
 import { useState, useRef } from 'react'
 import CheckIcon from './CheckIcon'
+import Spinner from './Spinner'
 import { LONG_PRESS_MS } from '../constants/config'
 
 interface Props {
@@ -71,7 +72,7 @@ export default function PokemonCard({
       <div className="bg-zinc-100 relative" style={{ paddingBottom: '140%' }}>
         {!imageLoaded && (
           <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 animate-pulse">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-500 animate-spin" />
+            <Spinner />
           </div>
         )}
         <img

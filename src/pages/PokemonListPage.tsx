@@ -4,6 +4,7 @@ import { usePokemon } from '../hooks/usePokemon'
 import { useAuth } from '../hooks/useAuth'
 import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
 import LoadingScreen from '../components/LoadingScreen'
+import Spinner from '../components/Spinner'
 import Header from '../components/Header'
 
 export default function PokemonListPage() {
@@ -87,7 +88,7 @@ export default function PokemonListPage() {
 
         {loadingMore && (
           <div className="flex justify-center py-6">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+            <Spinner />
           </div>
         )}
 

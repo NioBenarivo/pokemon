@@ -1,15 +1,19 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useInfiniteCards } from '../hooks/useInfiniteCards'
 import { useAuth } from '../hooks/useAuth'
 import Header from '../components/Header'
 import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
-import PokemonCard from '../components/PokemonCard'
 import SelectActionBar from '../components/SelectActionBar'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
-import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
+import { useSearchDebounce } from '../hooks/useSearchDebounce'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { useCardSelection } from '../hooks/useCardSelection'
+import Spinner from '../components/Spinner'
+import CardGrid from '../components/CardGrid'
+import { addToBinder } from '../utils/cardActions'
 import type { Card } from '../data/cards'
 
 export default function CardsPage() {
@@ -18,73 +22,19 @@ export default function CardsPage() {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [selectMode, setSelectMode] = useState(false)
-  const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
+  const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
+  const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection(owned)
   const [adding, setAdding] = useState(false)
-  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(t)
-  }, [searchQuery])
-
-  const { cards, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
+const { cards, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
     activeTab: 'all',
     searchQuery: debouncedSearch,
     selectedPack: null,
     ownedIds: owned,
   })
 
-  const loadMoreRef = useRef(loadMore)
-  loadMoreRef.current = loadMore
+  const { setSentinel } = useInfiniteScroll({ loadMore, loading, reloading, loadingMore })
 
-  const sentinelVisibleRef = useRef(false)
-
-  useEffect(() => {
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        sentinelVisibleRef.current = entry.isIntersecting
-        if (entry.isIntersecting) loadMoreRef.current()
-      },
-      { rootMargin: SCROLL_ROOT_MARGIN }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [sentinel])
-
-  useEffect(() => {
-    if (!loading && !reloading && !loadingMore && sentinelVisibleRef.current) {
-      loadMoreRef.current()
-    }
-  }, [loading, reloading, loadingMore])
-
-  function toggleSelected(cardId: string) {
-    if (owned.has(cardId)) return
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(cardId)) next.delete(cardId)
-      else next.add(cardId)
-      if (next.size === 0) setSelectMode(false)
-      return next
-    })
-  }
-
-  function handleCardClick(card: Card) {
-    if (selectMode) toggleSelected(card.id)
-    else setLightboxCard(card)
-  }
-
-  function handleCardLongPress(card: Card) {
-    if (owned.has(card.id)) return
-    if (!selectMode) setSelectMode(true)
-    toggleSelected(card.id)
-  }
-
-  async function handleAdd() {
+async function handleAdd() {
     if (selected.size === 0) return
     setAdding(true)
     const ids = [...selected]
@@ -94,8 +44,7 @@ export default function CardsPage() {
       if (wishlisted.length) await removeFromWishlist(wishlisted)
     }
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
-    setSelected(new Set())
-    setSelectMode(false)
+    clearSelection()
     setAdding(false)
   }
 
@@ -108,8 +57,7 @@ export default function CardsPage() {
       ? `${toAdd.length} card${toAdd.length > 1 ? 's' : ''} added to wishlist ✓`
       : 'Already in wishlist'
     )
-    setSelected(new Set())
-    setSelectMode(false)
+    clearSelection()
     setAdding(false)
   }
 
@@ -133,7 +81,7 @@ export default function CardsPage() {
           <SelectActionBar
             count={selected.size}
             adding={adding}
-            onCancel={() => { setSelected(new Set()); setSelectMode(false) }}
+            onCancel={clearSelection}
             onWishlist={handleAddToWishlist}
             onAddToBinder={handleAdd}
           />
@@ -141,32 +89,27 @@ export default function CardsPage() {
 
         {loading || reloading ? (
           <div className="flex justify-center py-16">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+            <Spinner />
           </div>
         ) : cards.length === 0 ? (
           <p className="text-center text-zinc-400 text-sm py-16">No cards found.</p>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-            {cards.map(card => (
-              <PokemonCard
-                key={card.id}
-                card={card}
-                isOwned={owned.has(card.id)}
-                isSelected={selected.has(card.id)}
-                isWishlisted={wishlist.has(card.id)}
-                selectMode={selectMode}
-                onClick={() => handleCardClick(card)}
-                onLongPress={() => handleCardLongPress(card)}
-              />
-            ))}
-          </div>
+          <CardGrid
+            cards={cards}
+            owned={owned}
+            selected={selected}
+            selectMode={selectMode}
+            wishlist={wishlist}
+            onCardClick={handleCardClick}
+            onCardLongPress={handleCardLongPress}
+          />
         )}
 
         <div ref={setSentinel} className="h-1" />
 
         {loadingMore && (
           <div className="flex justify-center py-6">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+            <Spinner />
           </div>
         )}
 
@@ -178,11 +121,7 @@ export default function CardsPage() {
           onClose={() => setLightboxCard(null)}
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
-          onAddToBinder={user ? async () => {
-            const ok = await addMultiple([lightboxCard.id])
-            if (ok && wishlist.has(lightboxCard.id)) await removeFromWishlist([lightboxCard.id])
-            showToast('Added to binder ✓')
-          } : undefined}
+          onAddToBinder={user ? () => addToBinder(lightboxCard.id, addMultiple, wishlist, removeFromWishlist, showToast) : undefined}
           onToggleWishlist={user ? () =>
             wishlist.has(lightboxCard.id)
               ? removeFromWishlist([lightboxCard.id])

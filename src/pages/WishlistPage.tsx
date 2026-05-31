@@ -4,11 +4,13 @@ import Header from '../components/Header'
 import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
-import PokemonCard from '../components/PokemonCard'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
 import { supabase } from '../lib/supabase'
-import { SEARCH_DEBOUNCE_MS } from '../constants/config'
+import { useSearchDebounce } from '../hooks/useSearchDebounce'
+import { useCardSelection } from '../hooks/useCardSelection'
+import Spinner from '../components/Spinner'
+import CardGrid from '../components/CardGrid'
 import type { Card } from '../data/cards'
 
 export default function WishlistPage() {
@@ -19,21 +21,13 @@ export default function WishlistPage() {
 
   const [cards, setCards] = useState<Card[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
   const [selectedPack, setSelectedPack] = useState<string | null>(null)
   const [packs, setPacks] = useState<string[]>([])
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [selectMode, setSelectMode] = useState(false)
-  const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
+  const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection()
   const [acting, setActing] = useState(false)
 
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(t)
-  }, [searchQuery])
-
-  const wishlistKey = [...wishlist].sort().join(',')
+const wishlistKey = [...wishlist].sort().join(',')
 
   // Fetch distinct pack names from wishlisted cards for the filter dropdown
   useEffect(() => {
@@ -69,35 +63,14 @@ export default function WishlistPage() {
     })
   }, [wishlistKey, debouncedSearch, selectedPack])
 
-  function toggleSelected(cardId: string) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(cardId)) next.delete(cardId)
-      else next.add(cardId)
-      if (next.size === 0) setSelectMode(false)
-      return next
-    })
-  }
-
-  function handleCardClick(card: Card) {
-    if (selectMode) toggleSelected(card.id)
-    else setLightboxCard(card)
-  }
-
-  function handleCardLongPress(card: Card) {
-    if (!selectMode) setSelectMode(true)
-    toggleSelected(card.id)
-  }
-
-  async function handleAddToBinder() {
+async function handleAddToBinder() {
     if (selected.size === 0) return
     setActing(true)
     const ids = [...selected]
     const ok = await addMultiple(ids)
     if (ok) await removeFromWishlist(ids)
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
-    setSelected(new Set())
-    setSelectMode(false)
+    clearSelection()
     setActing(false)
   }
 
@@ -106,8 +79,7 @@ export default function WishlistPage() {
     setActing(true)
     await removeFromWishlist([...selected])
     showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} removed from wishlist`)
-    setSelected(new Set())
-    setSelectMode(false)
+    clearSelection()
     setActing(false)
   }
 
@@ -147,7 +119,7 @@ export default function WishlistPage() {
               {selected.size} selected
             </span>
             <button
-              onClick={() => { setSelected(new Set()); setSelectMode(false) }}
+              onClick={clearSelection}
               className="text-xs text-zinc-400 hover:text-zinc-700 px-3 py-1.5 transition-colors"
             >
               Cancel
@@ -171,7 +143,7 @@ export default function WishlistPage() {
 
         {wishlistLoading || loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+            <Spinner />
           </div>
         ) : wishlist.size === 0 ? (
           <p className="text-center text-zinc-400 text-sm py-16">
@@ -180,19 +152,14 @@ export default function WishlistPage() {
         ) : cards.length === 0 ? (
           <p className="text-center text-zinc-400 text-sm py-16">No cards match your search.</p>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-            {cards.map(card => (
-              <PokemonCard
-                key={card.id}
-                card={card}
-                isOwned={owned.has(card.id)}
-                isSelected={selected.has(card.id)}
-                selectMode={selectMode}
-                onClick={() => handleCardClick(card)}
-                onLongPress={() => handleCardLongPress(card)}
-              />
-            ))}
-          </div>
+          <CardGrid
+            cards={cards}
+            owned={owned}
+            selected={selected}
+            selectMode={selectMode}
+            onCardClick={handleCardClick}
+            onCardLongPress={handleCardLongPress}
+          />
         )}
 
       </div>
