@@ -21,6 +21,8 @@ export default function WishlistPage() {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [selectedPack, setSelectedPack] = useState<string | null>(null)
+  const [packs, setPacks] = useState<string[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
   const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
@@ -32,6 +34,19 @@ export default function WishlistPage() {
   }, [searchQuery])
 
   const wishlistKey = [...wishlist].sort().join(',')
+
+  // Fetch distinct pack names from wishlisted cards for the filter dropdown
+  useEffect(() => {
+    if (wishlist.size === 0) { setPacks([]); return }
+    supabase
+      .from('scraped_cards')
+      .select('pack')
+      .in('id', [...wishlist])
+      .then(({ data }) => {
+        const unique = [...new Set((data ?? []).map(r => r.pack))].sort()
+        setPacks(unique)
+      })
+  }, [wishlistKey])
 
   // Fetch only the wishlisted cards directly by ID — no infinite scroll needed
   useEffect(() => {
@@ -45,13 +60,14 @@ export default function WishlistPage() {
       .order('name')
 
     if (debouncedSearch) q = q.ilike('name', `%${debouncedSearch}%`)
+    if (selectedPack) q = q.eq('pack', selectedPack)
 
     q.then(({ data, error }) => {
       if (error) { console.error('Failed to fetch wishlist cards:', error.message); setLoading(false); return }
       setCards((data ?? []) as Card[])
       setLoading(false)
     })
-  }, [wishlistKey, debouncedSearch])
+  }, [wishlistKey, debouncedSearch, selectedPack])
 
   function toggleSelected(cardId: string) {
     setSelected(prev => {
@@ -101,43 +117,51 @@ export default function WishlistPage() {
 
         <Header title="Wishlist" subtitle={`${wishlist.size} cards`} onSignOut={signOut} />
 
-        <div className="mb-5">
+        <div className="flex flex-wrap gap-2 mb-5">
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search wishlist..."
-            className="w-full px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
+            className="flex-1 min-w-[160px] px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
           />
+          {packs.length > 0 && (
+            <select
+              value={selectedPack ?? ''}
+              onChange={e => setSelectedPack(e.target.value || null)}
+              className="appearance-none px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors bg-white"
+            >
+              <option value="">All packs</option>
+              {packs.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          )}
         </div>
 
         {selectMode && (
-          <div className="flex items-center justify-between mb-4 px-4 py-3 bg-zinc-50 rounded-xl">
-            <span className="text-sm text-zinc-600">
-              {selected.size} card{selected.size !== 1 ? 's' : ''} selected
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-xl border border-zinc-100 whitespace-nowrap">
+            <span className="text-sm text-zinc-500 pr-1">
+              {selected.size} selected
             </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setSelected(new Set()); setSelectMode(false) }}
-                className="text-xs text-zinc-400 hover:text-zinc-700 px-3 py-1.5 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRemoveFromWishlist}
-                disabled={acting}
-                className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {acting ? 'Removing...' : 'Remove'}
-              </button>
-              <button
-                onClick={handleAddToBinder}
-                disabled={acting}
-                className="text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {acting ? 'Adding...' : 'Add to Binder'}
-              </button>
-            </div>
+            <button
+              onClick={() => { setSelected(new Set()); setSelectMode(false) }}
+              className="text-xs text-zinc-400 hover:text-zinc-700 px-3 py-1.5 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRemoveFromWishlist}
+              disabled={acting}
+              className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {acting ? 'Removing...' : 'Remove'}
+            </button>
+            <button
+              onClick={handleAddToBinder}
+              disabled={acting}
+              className="text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {acting ? 'Adding...' : 'Add to Binder'}
+            </button>
           </div>
         )}
 

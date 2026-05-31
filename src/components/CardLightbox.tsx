@@ -63,7 +63,7 @@ export default function CardLightbox({
 
         {showActions && (
           <div className="flex gap-3">
-            {onToggleWishlist !== undefined && (
+            {onToggleWishlist !== undefined && !isOwned && (
               <button
                 onClick={onToggleWishlist}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors
