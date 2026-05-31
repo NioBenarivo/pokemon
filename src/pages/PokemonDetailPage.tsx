@@ -6,6 +6,7 @@ import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
 import PokemonCard from '../components/PokemonCard'
+import SelectActionBar from '../components/SelectActionBar'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
 import LoadingScreen from '../components/LoadingScreen'
@@ -120,35 +121,14 @@ export default function PokemonDetailPage() {
         )}
 
 
-        {/* Action bar */}
         {selectMode && (
-          <div className="flex items-center justify-between mb-4 px-4 py-3 bg-zinc-50 rounded-xl">
-            <span className="text-sm text-zinc-600">
-              {selected.size} card{selected.size !== 1 ? 's' : ''} selected
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setSelected(new Set()); setSelectMode(false) }}
-                className="text-xs text-zinc-400 hover:text-zinc-700 px-3 py-1.5 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddToWishlist}
-                disabled={adding || selected.size === 0}
-                className="text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {adding ? '...' : '♡ Wishlist'}
-              </button>
-              <button
-                onClick={handleAdd}
-                disabled={adding || selected.size === 0}
-                className="text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {adding ? 'Adding...' : 'Add to Binder'}
-              </button>
-            </div>
-          </div>
+          <SelectActionBar
+            count={selected.size}
+            adding={adding}
+            onCancel={() => { setSelected(new Set()); setSelectMode(false) }}
+            onWishlist={handleAddToWishlist}
+            onAddToBinder={handleAdd}
+          />
         )}
 
         {/* Cards grid */}
@@ -164,9 +144,11 @@ export default function PokemonDetailPage() {
                 card={card}
                 isOwned={owned.has(card.id)}
                 isSelected={selected.has(card.id)}
+                isWishlisted={wishlist.has(card.id)}
                 selectMode={selectMode}
                 onClick={() => handleCardClick(card)}
                 onLongPress={() => handleCardLongPress(card)}
+                readOnly
               />
             ))}
           </div>

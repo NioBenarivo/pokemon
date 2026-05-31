@@ -209,6 +209,7 @@ export default function BinderPage() {
                 onClick={() => handleCardClick(card)}
                 onLongPress={() => handleCardLongPress(card)}
                 readOnly
+                removeMode
               />
             ))}
           </div>

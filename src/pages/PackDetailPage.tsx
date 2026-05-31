@@ -6,6 +6,7 @@ import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
 import PokemonCard from '../components/PokemonCard'
+import SelectActionBar from '../components/SelectActionBar'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
 import LoadingScreen from '../components/LoadingScreen'
@@ -17,7 +18,7 @@ export default function PackDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { owned, addMultiple } = useOwnedCards(user?.id ?? '')
-  const { wishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
+  const { wishlist, addToWishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
   const { pack, cards, loading } = usePackCards(Number(id))
@@ -47,6 +48,16 @@ export default function PackDetailPage() {
     if (owned.has(card.id)) return
     if (!selectMode) setSelectMode(true)
     toggleSelected(card.id)
+  }
+
+  async function handleAddToWishlist() {
+    if (selected.size === 0) return
+    setAdding(true)
+    await addToWishlist([...selected])
+    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} added to wishlist ✓`)
+    setSelected(new Set())
+    setSelectMode(false)
+    setAdding(false)
   }
 
   async function handleAdd() {
@@ -109,28 +120,14 @@ export default function PackDetailPage() {
           </div>
         )}
 
-        {/* Action bar */}
         {selectMode && (
-          <div className="flex items-center justify-between mb-4 px-4 py-3 bg-zinc-50 rounded-xl">
-            <span className="text-sm text-zinc-600">
-              {selected.size} card{selected.size !== 1 ? 's' : ''} selected
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setSelected(new Set()); setSelectMode(false) }}
-                className="text-xs text-zinc-400 hover:text-zinc-700 px-3 py-1.5 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAdd}
-                disabled={adding}
-                className="text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {adding ? 'Adding...' : 'Add to Binder'}
-              </button>
-            </div>
-          </div>
+          <SelectActionBar
+            count={selected.size}
+            adding={adding}
+            onCancel={() => { setSelected(new Set()); setSelectMode(false) }}
+            onWishlist={handleAddToWishlist}
+            onAddToBinder={handleAdd}
+          />
         )}
 
         {/* Cards grid */}
@@ -144,9 +141,11 @@ export default function PackDetailPage() {
                 card={card}
                 isOwned={owned.has(card.id)}
                 isSelected={selected.has(card.id)}
+                isWishlisted={wishlist.has(card.id)}
                 selectMode={selectMode}
                 onClick={() => handleCardClick(card)}
                 onLongPress={() => handleCardLongPress(card)}
+                readOnly
               />
             ))}
           </div>

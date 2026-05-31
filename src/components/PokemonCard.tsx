@@ -35,11 +35,13 @@ interface Props {
   onClick?: () => void    // fires on short tap
   onLongPress?: () => void // fires after holding for 500ms
   readOnly?: boolean      // true on the Binder tab — changes the visual layout
+  removeMode?: boolean    // true when selection means removal (red), false means addition (blue)
+  isWishlisted?: boolean  // true if this card is in the user's wishlist
 }
 
 export default function PokemonCard({
   card, isOwned, isSelected = false, selectMode = false,
-  onClick, onLongPress, readOnly = false,
+  onClick, onLongPress, readOnly = false, removeMode = false, isWishlisted = false,
 }: Props) {
 
   // Controls whether the card image is visible yet.
@@ -115,7 +117,7 @@ export default function PokemonCard({
         className={[
           'group select-none relative rounded-2xl overflow-hidden transition-all duration-200',
           onClick || onLongPress ? 'cursor-pointer' : 'cursor-default',
-          isSelected ? 'ring-2 ring-red-400 ring-offset-2 shadow-lg' : 'shadow-md hover:shadow-xl',
+          isSelected ? (removeMode ? 'ring-2 ring-red-400 ring-offset-2 shadow-lg' : 'ring-2 ring-blue-400 ring-offset-2 shadow-lg') : 'shadow-md hover:shadow-xl',
         ].join(' ')}
       >
         <div className="bg-zinc-100 relative" style={{ paddingBottom: '140%' }}>
@@ -136,6 +138,15 @@ export default function PokemonCard({
             ].join(' ')}
           />
 
+          {/* Wishlist heart badge */}
+          {isWishlisted && !isSelected && (
+            <div className="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shadow-md">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-white">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            </div>
+          )}
+
           {/* Selection badge */}
           <div
             className={[
@@ -143,7 +154,7 @@ export default function PokemonCard({
               'flex items-center justify-center shadow-md',
               'transition-all duration-200',
               isSelected
-                ? 'bg-red-400 opacity-100 scale-100'
+                ? (removeMode ? 'bg-red-400 opacity-100 scale-100' : 'bg-blue-400 opacity-100 scale-100')
                 : selectMode
                 ? 'bg-white/30 border border-white/60 opacity-100 scale-100'
                 : 'opacity-0 scale-50',
