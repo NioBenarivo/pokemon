@@ -157,7 +157,21 @@ export default function PokemonDetailPage() {
       </div>
 
       {lightboxCard && (
-        <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
+        <CardLightbox
+          card={lightboxCard}
+          onClose={() => setLightboxCard(null)}
+          isOwned={user ? owned.has(lightboxCard.id) : undefined}
+          isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
+          onAddToBinder={user ? async () => {
+            await addMultiple([lightboxCard.id])
+            showToast('Added to binder ✓')
+          } : undefined}
+          onToggleWishlist={user ? () =>
+            wishlist.has(lightboxCard.id)
+              ? removeFromWishlist([lightboxCard.id])
+              : addToWishlist([lightboxCard.id])
+          : undefined}
+        />
       )}
 
       <Toast toasts={toasts} onRemove={removeToast} />
