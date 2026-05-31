@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { usePokemonCards } from '../hooks/usePokemonCards'
 import { useAuth } from '../hooks/useAuth'
 import { useOwnedCards } from '../hooks/useOwnedCards'
+import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
 import PokemonCard from '../components/PokemonCard'
 import CardLightbox from '../components/CardLightbox'
@@ -15,6 +16,7 @@ export default function PokemonDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { owned, addMultiple, removeMultiple } = useOwnedCards(user?.id ?? '')
+  const { wishlist, addToWishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
   const { pokemon, cards, loading } = usePokemonCards(Number(id))
@@ -48,8 +50,23 @@ export default function PokemonDetailPage() {
   async function handleAdd() {
     if (selected.size === 0) return
     setAdding(true)
-    await addMultiple([...selected])
-    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} added to binder ✓`)
+    const ids = [...selected]
+    const ok = await addMultiple(ids)
+    if (ok) {
+      const wishlisted = ids.filter(id => wishlist.has(id))
+      if (wishlisted.length) await removeFromWishlist(wishlisted)
+    }
+    showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
+    setSelected(new Set())
+    setSelectMode(false)
+    setAdding(false)
+  }
+
+  async function handleAddToWishlist() {
+    if (selected.size === 0) return
+    setAdding(true)
+    await addToWishlist([...selected])
+    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} added to wishlist ✓`)
     setSelected(new Set())
     setSelectMode(false)
     setAdding(false)
@@ -115,6 +132,13 @@ export default function PokemonDetailPage() {
                 className="text-xs text-zinc-400 hover:text-zinc-700 px-3 py-1.5 transition-colors"
               >
                 Cancel
+              </button>
+              <button
+                onClick={handleAddToWishlist}
+                disabled={adding || selected.size === 0}
+                className="text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {adding ? '...' : '♡ Wishlist'}
               </button>
               <button
                 onClick={handleAdd}

@@ -20,15 +20,16 @@ export function useOwnedCards(userId: string) {
     fetchOwned()
   }, [userId])
 
-  async function addMultiple(cardIds: string[]) {
-    if (cardIds.length === 0) return
+  async function addMultiple(cardIds: string[]): Promise<boolean> {
+    if (cardIds.length === 0) return true
     const rows = cardIds.map(card_id => ({ user_id: userId, card_id }))
     const { error } = await supabase
       .from('owned_cards')
       .upsert(rows, { onConflict: 'user_id,card_id' })
 
-    if (error) { console.error('Failed to add cards:', error.message); return }
+    if (error) { console.error('Failed to add cards:', error.message); return false }
     setOwned(prev => new Set([...prev, ...cardIds]))
+    return true
   }
 
   async function removeMultiple(cardIds: string[]) {

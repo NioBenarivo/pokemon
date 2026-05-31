@@ -23,13 +23,21 @@ const nav = [
     ),
   },
   {
-    to: null,
+    to: '/packs',
     label: 'Packs',
-    disabled: true,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-6 h-6">
         <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a1 1 0 00-1 1v11a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+      </svg>
+    ),
+  },
+  {
+    to: '/wishlist',
+    label: 'Wishlist',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-6 h-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
       </svg>
     ),
   },
@@ -49,33 +57,19 @@ export default function NavBar() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-zinc-100 shadow-[0_-1px_8px_rgba(0,0,0,0.06)]">
       <div className="max-w-4xl mx-auto flex items-stretch">
-        {nav.map(item => {
-          if (item.disabled) {
-            return (
-              <div
-                key={item.label}
-                className="flex-1 flex flex-col items-center justify-center gap-1 py-3 text-zinc-300 cursor-not-allowed select-none"
-              >
-                {item.icon}
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </div>
-            )
-          }
-
-          return (
-            <NavLink
-              key={item.label}
-              to={item.to!}
-              className={({ isActive }) => [
-                'flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors',
-                isActive ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600',
-              ].join(' ')}
-            >
-              {item.icon}
-              <span className="text-[10px] font-medium">{item.label}</span>
-            </NavLink>
-          )
-        })}
+        {nav.map(item => (
+          <NavLink
+            key={item.label}
+            to={item.to}
+            className={({ isActive }) => [
+              'flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors',
+              isActive ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600',
+            ].join(' ')}
+          >
+            {item.icon}
+            <span className="text-[10px] font-medium">{item.label}</span>
+          </NavLink>
+        ))}
       </div>
     </nav>
   )

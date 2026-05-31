@@ -60,8 +60,11 @@ export default function CardLightbox({ card, onClose }: Props) {
       />
 
       <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none">
-        <p className="text-white font-semibold text-sm">{card.name}</p>
-        <p className="text-white/50 text-xs mt-0.5">{card.pack}</p>
+        <p className="text-white text-sm">
+          <span className="font-semibold">{card.name}</span>
+          <span className="text-white/30 mx-2">·</span>
+          <span className="text-white/50">{card.pack}</span>
+        </p>
       </div>
     </div>
   )

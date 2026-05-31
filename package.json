@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "seed:pokemon": "node --env-file=.env.local seed_pokemon.js",
-    "seed:cards": "node --env-file=.env.local seed_cards.js"
+    "seed:cards": "node --env-file=.env.local seed_cards.js",
+    "seed:packs": "node --env-file=.env.local seed_packs.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

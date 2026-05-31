@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
-import { useInfiniteCards } from '../hooks/useInfiniteCards'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
@@ -7,61 +6,53 @@ import { useToast } from '../hooks/useToast'
 import PokemonCard from '../components/PokemonCard'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
-import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
+import { supabase } from '../lib/supabase'
+import { SEARCH_DEBOUNCE_MS } from '../constants/config'
 import type { Card } from '../data/cards'
 
-export default function CardsPage() {
+export default function WishlistPage() {
   const { user } = useAuth()
   const { owned, addMultiple } = useOwnedCards(user?.id ?? '')
-  const { wishlist, addToWishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
+  const { wishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
+  const [cards, setCards] = useState<Card[]>([])
+  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
   const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null)
+  const [acting, setActing] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(t)
   }, [searchQuery])
 
-  const { cards, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
-    activeTab: 'all',
-    searchQuery: debouncedSearch,
-    selectedPack: null,
-    ownedIds: owned,
-  })
+  const wishlistKey = [...wishlist].sort().join(',')
 
-  const loadMoreRef = useRef(loadMore)
-  loadMoreRef.current = loadMore
-
-  const sentinelVisibleRef = useRef(false)
-
+  // Fetch only the wishlisted cards directly by ID — no infinite scroll needed
   useEffect(() => {
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        sentinelVisibleRef.current = entry.isIntersecting
-        if (entry.isIntersecting) loadMoreRef.current()
-      },
-      { rootMargin: SCROLL_ROOT_MARGIN }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [sentinel])
+    if (wishlist.size === 0) { setCards([]); return }
 
-  useEffect(() => {
-    if (!loading && !reloading && !loadingMore && sentinelVisibleRef.current) {
-      loadMoreRef.current()
-    }
-  }, [loading, reloading, loadingMore])
+    setLoading(true)
+    let q = supabase
+      .from('scraped_cards')
+      .select('*')
+      .in('id', [...wishlist])
+      .order('name')
+
+    if (debouncedSearch) q = q.ilike('name', `%${debouncedSearch}%`)
+
+    q.then(({ data, error }) => {
+      if (error) { console.error('Failed to fetch wishlist cards:', error.message); setLoading(false); return }
+      setCards((data ?? []) as Card[])
+      setLoading(false)
+    })
+  }, [wishlistKey, debouncedSearch])
 
   function toggleSelected(cardId: string) {
-    if (owned.has(cardId)) return
     setSelected(prev => {
       const next = new Set(prev)
       if (next.has(cardId)) next.delete(cardId)
@@ -77,48 +68,49 @@ export default function CardsPage() {
   }
 
   function handleCardLongPress(card: Card) {
-    if (owned.has(card.id)) return
     if (!selectMode) setSelectMode(true)
     toggleSelected(card.id)
   }
 
-  async function handleAdd() {
+  async function handleAddToBinder() {
     if (selected.size === 0) return
-    setAdding(true)
+    setActing(true)
     const ids = [...selected]
     const ok = await addMultiple(ids)
-    if (ok) {
-      const wishlisted = ids.filter(id => wishlist.has(id))
-      if (wishlisted.length) await removeFromWishlist(wishlisted)
-    }
+    if (ok) await removeFromWishlist(ids)
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
     setSelected(new Set())
     setSelectMode(false)
-    setAdding(false)
+    setActing(false)
   }
 
-  async function handleAddToWishlist() {
+  async function handleRemoveFromWishlist() {
     if (selected.size === 0) return
-    setAdding(true)
-    await addToWishlist([...selected])
-    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} added to wishlist ✓`)
+    setActing(true)
+    await removeFromWishlist([...selected])
+    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} removed from wishlist`)
     setSelected(new Set())
     setSelectMode(false)
-    setAdding(false)
+    setActing(false)
   }
 
   return (
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
-        <h1 className="text-2xl font-bold text-zinc-900 mb-6">All Cards</h1>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900">Wishlist</h1>
+            <p className="text-sm text-zinc-400">{wishlist.size} cards</p>
+          </div>
+        </div>
 
         <div className="mb-5">
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search cards..."
+            placeholder="Search wishlist..."
             className="w-full px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
           />
         </div>
@@ -136,29 +128,33 @@ export default function CardsPage() {
                 Cancel
               </button>
               <button
-                onClick={handleAddToWishlist}
-                disabled={adding}
-                className="text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+                onClick={handleRemoveFromWishlist}
+                disabled={acting}
+                className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
               >
-                {adding ? '...' : '♡ Wishlist'}
+                {acting ? 'Removing...' : 'Remove'}
               </button>
               <button
-                onClick={handleAdd}
-                disabled={adding}
+                onClick={handleAddToBinder}
+                disabled={acting}
                 className="text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
               >
-                {adding ? 'Adding...' : 'Add to Binder'}
+                {acting ? 'Adding...' : 'Add to Binder'}
               </button>
             </div>
           </div>
         )}
 
-        {loading || reloading ? (
+        {loading ? (
           <div className="flex justify-center py-16">
             <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
           </div>
+        ) : wishlist.size === 0 ? (
+          <p className="text-center text-zinc-400 text-sm py-16">
+            Your wishlist is empty. Browse cards or Pokémon to add some!
+          </p>
         ) : cards.length === 0 ? (
-          <p className="text-center text-zinc-400 text-sm py-16">No cards found.</p>
+          <p className="text-center text-zinc-400 text-sm py-16">No cards match your search.</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
             {cards.map(card => (
@@ -173,14 +169,6 @@ export default function CardsPage() {
                 readOnly
               />
             ))}
-          </div>
-        )}
-
-        <div ref={setSentinel} className="h-1" />
-
-        {loadingMore && (
-          <div className="flex justify-center py-6">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
           </div>
         )}
 

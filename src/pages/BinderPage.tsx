@@ -6,6 +6,8 @@ import { useToast } from '../hooks/useToast'
 import PokemonCard from '../components/PokemonCard'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
+import ProgressBar from '../components/ProgressBar'
+import { supabase } from '../lib/supabase'
 import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
 import type { Card } from '../data/cards'
 
@@ -34,6 +36,35 @@ export default function BinderPage() {
     selectedPack,
     ownedIds: owned,
   })
+
+  const [selectedPackTotal, setSelectedPackTotal] = useState<number | null>(null)
+  const [selectedPackOwned, setSelectedPackOwned] = useState(0)
+  const ownedKey = [...owned].sort().join(',')
+
+  useEffect(() => {
+    if (!selectedPack || owned.size === 0) {
+      setSelectedPackTotal(null)
+      setSelectedPackOwned(0)
+      return
+    }
+
+    let cancelled = false
+
+    Promise.all([
+      supabase.from('packs').select('card_count').eq('name', selectedPack).single(),
+      supabase
+        .from('scraped_cards')
+        .select('*', { count: 'exact', head: true })
+        .eq('pack', selectedPack)
+        .in('id', [...owned]),
+    ]).then(([packRes, ownedRes]) => {
+      if (cancelled) return
+      setSelectedPackTotal(packRes.data?.card_count ?? null)
+      setSelectedPackOwned(ownedRes.count ?? 0)
+    })
+
+    return () => { cancelled = true }
+  }, [selectedPack, ownedKey])
 
   const loadMoreRef = useRef(loadMore)
   loadMoreRef.current = loadMore
@@ -103,7 +134,7 @@ export default function BinderPage() {
         </div>
 
         {/* Search + Pack filter */}
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="flex flex-wrap gap-2 mb-3">
           <input
             type="text"
             value={searchQuery}
@@ -115,13 +146,19 @@ export default function BinderPage() {
             <select
               value={selectedPack ?? ''}
               onChange={e => setSelectedPack(e.target.value || null)}
-              className="px-3 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors"
+              className="appearance-none px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors bg-white"
             >
               <option value="">All packs</option>
               {packs.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           )}
         </div>
+
+        {selectedPack && selectedPackTotal && (
+          <div className="mb-5">
+            <ProgressBar owned={selectedPackOwned} total={selectedPackTotal} />
+          </div>
+        )}
 
         {/* Action bar */}
         {selectMode && (

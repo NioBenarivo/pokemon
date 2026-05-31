@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
-import { useInfiniteCards } from '../hooks/useInfiniteCards'
+import { useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { usePackCards } from '../hooks/usePackCards'
 import { useAuth } from '../hooks/useAuth'
 import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
@@ -7,58 +8,24 @@ import { useToast } from '../hooks/useToast'
 import PokemonCard from '../components/PokemonCard'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
-import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
+import LoadingScreen from '../components/LoadingScreen'
+import ProgressBar from '../components/ProgressBar'
 import type { Card } from '../data/cards'
 
-export default function CardsPage() {
+export default function PackDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { owned, addMultiple } = useOwnedCards(user?.id ?? '')
-  const { wishlist, addToWishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
+  const { wishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const { pack, cards, loading } = usePackCards(Number(id))
+
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
   const [lightboxCard, setLightboxCard] = useState<Card | null>(null)
   const [adding, setAdding] = useState(false)
-  const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null)
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(t)
-  }, [searchQuery])
-
-  const { cards, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
-    activeTab: 'all',
-    searchQuery: debouncedSearch,
-    selectedPack: null,
-    ownedIds: owned,
-  })
-
-  const loadMoreRef = useRef(loadMore)
-  loadMoreRef.current = loadMore
-
-  const sentinelVisibleRef = useRef(false)
-
-  useEffect(() => {
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        sentinelVisibleRef.current = entry.isIntersecting
-        if (entry.isIntersecting) loadMoreRef.current()
-      },
-      { rootMargin: SCROLL_ROOT_MARGIN }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [sentinel])
-
-  useEffect(() => {
-    if (!loading && !reloading && !loadingMore && sentinelVisibleRef.current) {
-      loadMoreRef.current()
-    }
-  }, [loading, reloading, loadingMore])
 
   function toggleSelected(cardId: string) {
     if (owned.has(cardId)) return
@@ -97,32 +64,52 @@ export default function CardsPage() {
     setAdding(false)
   }
 
-  async function handleAddToWishlist() {
-    if (selected.size === 0) return
-    setAdding(true)
-    await addToWishlist([...selected])
-    showToast(`${selected.size} card${selected.size > 1 ? 's' : ''} added to wishlist ✓`)
-    setSelected(new Set())
-    setSelectMode(false)
-    setAdding(false)
-  }
+  const ownedCount = cards.filter(c => owned.has(c.id)).length
+
+  if (loading) return <LoadingScreen message="Loading pack..." />
 
   return (
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
-        <h1 className="text-2xl font-bold text-zinc-900 mb-6">All Cards</h1>
+        {/* Back button */}
+        <button
+          onClick={() => navigate('/packs')}
+          className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-700 transition-colors mb-6"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          All Packs
+        </button>
 
-        <div className="mb-5">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search cards..."
-            className="w-full px-4 py-2 text-sm rounded-xl border border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 transition-colors"
-          />
-        </div>
+        {/* Pack header */}
+        {pack && (
+          <div className="flex items-center gap-5 mb-8 p-5 bg-zinc-500 rounded-2xl">
+            <img
+              src={pack.image_url}
+              alt={pack.name}
+              className="h-20 object-contain"
+            />
+            <div>
+              <h1 className="text-xl font-bold text-white leading-tight">{pack.name}</h1>
+              <div className="flex items-center gap-3 mt-1.5">
+                <span className="text-sm text-white/70">
+                  {pack.card_count != null ? `${pack.card_count} cards` : `${cards.length} cards`}
+                </span>
+                {pack.release_date && (
+                  <>
+                    <span className="text-white/30">·</span>
+                    <span className="text-sm text-white/70">{pack.release_date}</span>
+                  </>
+                )}
+              </div>
+              {user && <ProgressBar owned={ownedCount} total={pack.card_count ?? cards.length} />}
+            </div>
+          </div>
+        )}
 
+        {/* Action bar */}
         {selectMode && (
           <div className="flex items-center justify-between mb-4 px-4 py-3 bg-zinc-50 rounded-xl">
             <span className="text-sm text-zinc-600">
@@ -136,13 +123,6 @@ export default function CardsPage() {
                 Cancel
               </button>
               <button
-                onClick={handleAddToWishlist}
-                disabled={adding}
-                className="text-xs font-semibold text-zinc-700 bg-zinc-100 hover:bg-zinc-200 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {adding ? '...' : '♡ Wishlist'}
-              </button>
-              <button
                 onClick={handleAdd}
                 disabled={adding}
                 className="text-xs font-semibold text-white bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
@@ -153,12 +133,9 @@ export default function CardsPage() {
           </div>
         )}
 
-        {loading || reloading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
-          </div>
-        ) : cards.length === 0 ? (
-          <p className="text-center text-zinc-400 text-sm py-16">No cards found.</p>
+        {/* Cards grid */}
+        {cards.length === 0 ? (
+          <p className="text-center text-zinc-400 text-sm py-16">No cards found for this pack.</p>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
             {cards.map(card => (
@@ -170,17 +147,8 @@ export default function CardsPage() {
                 selectMode={selectMode}
                 onClick={() => handleCardClick(card)}
                 onLongPress={() => handleCardLongPress(card)}
-                readOnly
               />
             ))}
-          </div>
-        )}
-
-        <div ref={setSentinel} className="h-1" />
-
-        {loadingMore && (
-          <div className="flex justify-center py-6">
-            <div className="w-6 h-6 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
           </div>
         )}
 
