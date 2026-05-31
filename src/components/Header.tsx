@@ -1,36 +1,24 @@
-// ─────────────────────────────────────────────────────────────
-// components/Header.tsx
-//
-// The page title area at the top of the main app.
-// Shows the app name and the logged-in user's username.
-// Also contains the "Sign out" button in the top-right corner.
-//
-// The username is derived in App.tsx by splitting the email address
-// at the "@" — so "ash@pokemon-binder.app" becomes "ash".
-// ─────────────────────────────────────────────────────────────
-
-import { APP, AUTH } from '../constants/strings'
+import { AUTH } from '../constants/strings'
 
 interface Props {
-  username: string     // first part of the user's email, used as their display name
+  title: string
+  subtitle?: string
   onSignOut: () => void
 }
 
-export default function Header({ username, onSignOut }: Props) {
+export default function Header({ title, subtitle, onSignOut }: Props) {
   return (
-    <header className="text-center mb-7 relative">
-      <p className="text-zinc-400 text-xs uppercase tracking-widest mb-1">{APP.SUBTITLE}</p>
-      <h1 className="text-zinc-900 text-2xl font-bold tracking-tight">
-        {APP.TITLE}
-      </h1>
-      <p className="text-zinc-400 text-xs mt-1">{username}'s binder</p>
+    <div className="flex items-center justify-between mb-6">
+      <div>
+        <h1 className="text-2xl font-bold text-zinc-900">{title}</h1>
+        {subtitle && <p className="text-sm text-zinc-400">{subtitle}</p>}
+      </div>
       <button
         onClick={onSignOut}
-        className="absolute right-0 top-0 text-xs text-zinc-400
-                   hover:text-zinc-700 transition-colors duration-150"
+        className="text-xs text-zinc-500 hover:text-zinc-800 transition-colors duration-150"
       >
         {AUTH.SIGN_OUT}
       </button>
-    </header>
+    </div>
   )
 }

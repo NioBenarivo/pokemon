@@ -4,9 +4,10 @@ import { usePokemon } from '../hooks/usePokemon'
 import { useAuth } from '../hooks/useAuth'
 import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
 import LoadingScreen from '../components/LoadingScreen'
+import Header from '../components/Header'
 
 export default function PokemonListPage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -39,13 +40,7 @@ export default function PokemonListPage() {
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900">Pokédex</h1>
-            <p className="text-sm text-zinc-400">Hi, {username}</p>
-          </div>
-        </div>
+        <Header title="Pokédex" subtitle={`Hi, ${username}`} onSignOut={signOut} />
 
         {/* Search */}
         <div className="mb-6">

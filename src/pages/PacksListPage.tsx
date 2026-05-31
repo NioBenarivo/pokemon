@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePacks } from '../hooks/usePacks'
 import { useAuth } from '../hooks/useAuth'
+import Header from '../components/Header'
 import { usePackOwnedCounts } from '../hooks/usePackOwnedCounts'
 import ProgressBar from '../components/ProgressBar'
 import { SEARCH_DEBOUNCE_MS } from '../constants/config'
@@ -9,7 +10,7 @@ import LoadingScreen from '../components/LoadingScreen'
 
 export default function PacksListPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const ownedCounts = usePackOwnedCounts(user?.id ?? '')
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -26,7 +27,7 @@ export default function PacksListPage() {
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
-        <h1 className="text-2xl font-bold text-zinc-900 mb-6">Packs</h1>
+        <Header title="Packs" onSignOut={signOut} />
 
         <div className="mb-5">
           <input

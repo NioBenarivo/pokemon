@@ -8,11 +8,12 @@ import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
 import ProgressBar from '../components/ProgressBar'
 import { supabase } from '../lib/supabase'
+import Header from '../components/Header'
 import { SEARCH_DEBOUNCE_MS, SCROLL_ROOT_MARGIN } from '../constants/config'
 import type { Card } from '../data/cards'
 
 export default function BinderPage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { owned, removeMultiple } = useOwnedCards(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
 
@@ -126,12 +127,7 @@ export default function BinderPage() {
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900">My Binder</h1>
-            <p className="text-sm text-zinc-400">{username} · {owned.size} cards</p>
-          </div>
-        </div>
+        <Header title="My Binder" subtitle={`${username} · ${owned.size} cards`} onSignOut={signOut} />
 
         {/* Search + Pack filter */}
         <div className="flex flex-wrap gap-2 mb-3">
@@ -226,7 +222,11 @@ export default function BinderPage() {
       </div>
 
       {lightboxCard && (
-        <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
+        <CardLightbox
+          card={lightboxCard}
+          onClose={() => setLightboxCard(null)}
+          isOwned={owned.has(lightboxCard.id)}
+        />
       )}
 
       <Toast toasts={toasts} onRemove={removeToast} />

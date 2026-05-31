@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import Header from '../components/Header'
 import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
@@ -11,7 +12,7 @@ import { SEARCH_DEBOUNCE_MS } from '../constants/config'
 import type { Card } from '../data/cards'
 
 export default function WishlistPage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { owned, addMultiple } = useOwnedCards(user?.id ?? '')
   const { wishlist, removeFromWishlist } = useWishlist(user?.id ?? '')
   const { toasts, showToast, removeToast } = useToast()
@@ -98,12 +99,7 @@ export default function WishlistPage() {
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
       <div className="max-w-4xl mx-auto">
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900">Wishlist</h1>
-            <p className="text-sm text-zinc-400">{wishlist.size} cards</p>
-          </div>
-        </div>
+        <Header title="Wishlist" subtitle={`${wishlist.size} cards`} onSignOut={signOut} />
 
         <div className="mb-5">
           <input
@@ -175,7 +171,17 @@ export default function WishlistPage() {
       </div>
 
       {lightboxCard && (
-        <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} />
+        <CardLightbox
+          card={lightboxCard}
+          onClose={() => setLightboxCard(null)}
+          isOwned={user ? owned.has(lightboxCard.id) : undefined}
+          isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
+          onAddToBinder={user ? async () => {
+            await addMultiple([lightboxCard.id])
+            showToast('Added to binder ✓')
+          } : undefined}
+          onToggleWishlist={user ? () => removeFromWishlist([lightboxCard.id]) : undefined}
+        />
       )}
 
       <Toast toasts={toasts} onRemove={removeToast} />
