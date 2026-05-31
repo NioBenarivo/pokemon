@@ -158,7 +158,7 @@ export default function BinderPage() {
 
         {/* Action bar */}
         {selectMode && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-xl border border-zinc-100 whitespace-nowrap">
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-xl border border-zinc-100 whitespace-nowrap">
             <span className="text-sm text-zinc-500 pr-1">
               {selected.size} selected
             </span>
