@@ -6,9 +6,9 @@ import { useOwnedCards } from '../hooks/useOwnedCards'
 import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
 import CardGrid from '../components/CardGrid'
-import { addToBinder } from '../utils/cardActions'
-import { getActiveBinder } from '../hooks/useBinders'
+import { useBinders } from '../hooks/useBinders'
 import SelectActionBar from '../components/SelectActionBar'
+import BinderPickerModal from '../components/BinderPickerModal'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
 import LoadingScreen from '../components/LoadingScreen'
@@ -25,8 +25,10 @@ export default function PackDetailPage() {
 
   const { pack, cards, loading } = usePackCards(Number(id))
 
+  const { binders } = useBinders(user?.id ?? '')
   const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection(owned)
   const [adding, setAdding] = useState(false)
+  const [pickerCardIds, setPickerCardIds] = useState<string[] | null>(null)
 
 async function handleAddToWishlist() {
     if (selected.size === 0) return
@@ -41,13 +43,17 @@ async function handleAddToWishlist() {
     setAdding(false)
   }
 
-  async function handleAdd() {
+  function handleAdd() {
     if (selected.size === 0) return
+    setPickerCardIds([...selected])
+  }
+
+  async function handleBinderSelected(binderId: string) {
+    if (!pickerCardIds) return
+    const ids = pickerCardIds
+    setPickerCardIds(null)
     setAdding(true)
-    const ids = [...selected]
-    const activeBinder = getActiveBinder()
-    if (!activeBinder) { showToast('Open a binder first'); setAdding(false); return }
-    const ok = await addMultiple(ids, activeBinder)
+    const ok = await addMultiple(ids, binderId)
     if (ok) {
       const wishlisted = ids.filter(id => wishlist.has(id))
       if (wishlisted.length) await removeFromWishlist(wishlisted)
@@ -139,7 +145,7 @@ async function handleAddToWishlist() {
           onClose={() => setLightboxCard(null)}
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
-          onAddToBinder={user ? () => addToBinder(lightboxCard.id, addMultiple, wishlist, removeFromWishlist, showToast) : undefined}
+          onAddToBinder={user && !owned.has(lightboxCard.id) ? () => setPickerCardIds([lightboxCard.id]) : undefined}
           onToggleWishlist={user ? () =>
             wishlist.has(lightboxCard.id)
               ? removeFromWishlist([lightboxCard.id])
@@ -149,6 +155,14 @@ async function handleAddToWishlist() {
       )}
 
       <Toast toasts={toasts} onRemove={removeToast} />
+
+      {pickerCardIds && (
+        <BinderPickerModal
+          binders={binders}
+          onSelect={handleBinderSelected}
+          onClose={() => setPickerCardIds(null)}
+        />
+      )}
     </div>
   )
 }

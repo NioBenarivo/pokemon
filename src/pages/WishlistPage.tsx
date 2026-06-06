@@ -12,8 +12,8 @@ import { useInfiniteWishlistCards } from '../hooks/useInfiniteWishlistCards'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import Spinner from '../components/Spinner'
 import CardGrid from '../components/CardGrid'
-import { addToBinder } from '../utils/cardActions'
-import { getActiveBinder } from '../hooks/useBinders'
+import { useBinders } from '../hooks/useBinders'
+import BinderPickerModal from '../components/BinderPickerModal'
 
 export default function WishlistPage() {
   const { user, signOut } = useAuth()
@@ -23,8 +23,10 @@ export default function WishlistPage() {
 
   const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
   const [selectedPack, setSelectedPack] = useState<string | null>(null)
+  const { binders } = useBinders(user?.id ?? '')
   const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection()
   const [acting, setActing] = useState(false)
+  const [pickerCardIds, setPickerCardIds] = useState<string[] | null>(null)
 
   const { cards, packs, loading, reloading, loadingMore, loadMore } = useInfiniteWishlistCards({
     wishlistIds: wishlist,
@@ -34,13 +36,17 @@ export default function WishlistPage() {
 
   const { setSentinel } = useInfiniteScroll({ loadMore, loading, reloading, loadingMore })
 
-  async function handleAddToBinder() {
+  function handleAddToBinder() {
     if (selected.size === 0) return
+    setPickerCardIds([...selected])
+  }
+
+  async function handleBinderSelected(binderId: string) {
+    if (!pickerCardIds) return
+    const ids = pickerCardIds
+    setPickerCardIds(null)
     setActing(true)
-    const ids = [...selected]
-    const activeBinder = getActiveBinder()
-    if (!activeBinder) { showToast('Open a binder first'); setActing(false); return }
-    const ok = await addMultiple(ids, activeBinder)
+    const ok = await addMultiple(ids, binderId)
     if (ok) await removeFromWishlist(ids)
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
     clearSelection()
@@ -151,12 +157,20 @@ export default function WishlistPage() {
           onClose={() => setLightboxCard(null)}
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
-          onAddToBinder={user ? () => addToBinder(lightboxCard.id, addMultiple, wishlist, removeFromWishlist, showToast) : undefined}
+          onAddToBinder={user && !owned.has(lightboxCard.id) ? () => setPickerCardIds([lightboxCard.id]) : undefined}
           onToggleWishlist={user ? () => removeFromWishlist([lightboxCard.id]) : undefined}
         />
       )}
 
       <Toast toasts={toasts} onRemove={removeToast} />
+
+      {pickerCardIds && (
+        <BinderPickerModal
+          binders={binders}
+          onSelect={handleBinderSelected}
+          onClose={() => setPickerCardIds(null)}
+        />
+      )}
     </div>
   )
 }

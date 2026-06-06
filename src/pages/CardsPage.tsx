@@ -13,8 +13,8 @@ import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { useCardSelection } from '../hooks/useCardSelection'
 import Spinner from '../components/Spinner'
 import CardGrid from '../components/CardGrid'
-import { addToBinder } from '../utils/cardActions'
-import { getActiveBinder } from '../hooks/useBinders'
+import { useBinders } from '../hooks/useBinders'
+import BinderPickerModal from '../components/BinderPickerModal'
 import type { Card } from '../data/cards'
 
 export default function CardsPage() {
@@ -24,8 +24,10 @@ export default function CardsPage() {
   const { toasts, showToast, removeToast } = useToast()
 
   const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
+  const { binders } = useBinders(user?.id ?? '')
   const { selected, selectMode, lightboxCard, setLightboxCard, clearSelection, handleCardClick, handleCardLongPress } = useCardSelection(owned)
   const [adding, setAdding] = useState(false)
+  const [pickerCardIds, setPickerCardIds] = useState<string[] | null>(null)
 const { cards, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
     activeTab: 'all',
     searchQuery: debouncedSearch,
@@ -35,13 +37,17 @@ const { cards, loading, reloading, loadingMore, loadMore } = useInfiniteCards({
 
   const { setSentinel } = useInfiniteScroll({ loadMore, loading, reloading, loadingMore })
 
-async function handleAdd() {
+  function handleAdd() {
     if (selected.size === 0) return
+    setPickerCardIds([...selected])
+  }
+
+  async function handleBinderSelected(binderId: string) {
+    if (!pickerCardIds) return
+    const ids = pickerCardIds
+    setPickerCardIds(null)
     setAdding(true)
-    const ids = [...selected]
-    const activeBinder = getActiveBinder()
-    if (!activeBinder) { showToast('Open a binder first'); setAdding(false); return }
-    const ok = await addMultiple(ids, activeBinder)
+    const ok = await addMultiple(ids, binderId)
     if (ok) {
       const wishlisted = ids.filter(id => wishlist.has(id))
       if (wishlisted.length) await removeFromWishlist(wishlisted)
@@ -124,7 +130,7 @@ async function handleAdd() {
           onClose={() => setLightboxCard(null)}
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
-          onAddToBinder={user ? () => addToBinder(lightboxCard.id, addMultiple, wishlist, removeFromWishlist, showToast) : undefined}
+          onAddToBinder={user && !owned.has(lightboxCard.id) ? () => setPickerCardIds([lightboxCard.id]) : undefined}
           onToggleWishlist={user ? () =>
             wishlist.has(lightboxCard.id)
               ? removeFromWishlist([lightboxCard.id])
@@ -134,6 +140,14 @@ async function handleAdd() {
       )}
 
       <Toast toasts={toasts} onRemove={removeToast} />
+
+      {pickerCardIds && (
+        <BinderPickerModal
+          binders={binders}
+          onSelect={handleBinderSelected}
+          onClose={() => setPickerCardIds(null)}
+        />
+      )}
     </div>
   )
 }
