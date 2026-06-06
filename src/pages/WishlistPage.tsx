@@ -12,6 +12,8 @@ import { useInfiniteWishlistCards } from '../hooks/useInfiniteWishlistCards'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import Spinner from '../components/Spinner'
 import CardGrid from '../components/CardGrid'
+import { addToBinder } from '../utils/cardActions'
+import { getActiveBinder } from '../hooks/useBinders'
 
 export default function WishlistPage() {
   const { user, signOut } = useAuth()
@@ -36,7 +38,9 @@ export default function WishlistPage() {
     if (selected.size === 0) return
     setActing(true)
     const ids = [...selected]
-    const ok = await addMultiple(ids)
+    const activeBinder = getActiveBinder()
+    if (!activeBinder) { showToast('Open a binder first'); setActing(false); return }
+    const ok = await addMultiple(ids, activeBinder)
     if (ok) await removeFromWishlist(ids)
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
     clearSelection()
@@ -147,11 +151,7 @@ export default function WishlistPage() {
           onClose={() => setLightboxCard(null)}
           isOwned={user ? owned.has(lightboxCard.id) : undefined}
           isWishlisted={user ? wishlist.has(lightboxCard.id) : undefined}
-          onAddToBinder={user ? async () => {
-            const ok = await addMultiple([lightboxCard.id])
-            if (ok) await removeFromWishlist([lightboxCard.id])
-            showToast('Added to binder ✓')
-          } : undefined}
+          onAddToBinder={user ? () => addToBinder(lightboxCard.id, addMultiple, wishlist, removeFromWishlist, showToast) : undefined}
           onToggleWishlist={user ? () => removeFromWishlist([lightboxCard.id]) : undefined}
         />
       )}
