@@ -53,11 +53,11 @@ async function handleAddToWishlist() {
     const ids = pickerCardIds
     setPickerCardIds(null)
     setAdding(true)
-    const ok = await addMultiple(ids, binderId)
-    if (ok) {
-      const wishlisted = ids.filter(id => wishlist.has(id))
-      if (wishlisted.length) await removeFromWishlist(wishlisted)
-    }
+    const result = await addMultiple(ids, binderId)
+    if (result === 'full') { showToast('Binder is full (max 540 cards)'); clearSelection(); setAdding(false); return }
+    if (result === 'error') { showToast('Failed to add cards. Please try again.'); clearSelection(); setAdding(false); return }
+    const wishlisted = ids.filter(id => wishlist.has(id))
+    if (wishlisted.length) await removeFromWishlist(wishlisted)
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
     clearSelection()
     setAdding(false)

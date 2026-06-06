@@ -100,7 +100,7 @@ interface BinderTileProps {
   binder: Binder
   isEditing: boolean
   editName: string
-  inputRef?: React.RefObject<HTMLInputElement>
+  inputRef?: React.RefObject<HTMLInputElement | null>
   onTileClick: () => void
   onNameClick: (e: React.MouseEvent) => void
   onEditChange: (v: string) => void

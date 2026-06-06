@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   DndContext, DragOverlay, closestCenter,
-  PointerSensor, KeyboardSensor, useSensor, useSensors,
+  PointerSensor, useSensor, useSensors,
+  useDraggable, useDroppable,
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core'
-import { SortableContext, rectSortingStrategy, useSortable, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '../hooks/useAuth'
-import { useOwnedCards } from '../hooks/useOwnedCards'
+import { useOwnedCards, MAX_BINDER } from '../hooks/useOwnedCards'
 import { useToast } from '../hooks/useToast'
 import { useInfiniteCards } from '../hooks/useInfiniteCards'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
@@ -22,13 +21,106 @@ import PokemonCard from '../components/PokemonCard'
 import Spinner from '../components/Spinner'
 import type { Card } from '../data/cards'
 
-const VISIBLE_STEP = 20
+const SECTION_SIZE = 18 // 6 cols × 3 rows
+const VISIBLE_STEP = SECTION_SIZE
+
+// ── Binder layout helpers ─────────────────────────────────────────────────────
+
+function buildSections(cards: (Card | null)[]): (Card | null)[][] {
+  if (cards.length === 0) return []
+  const sectionCount = Math.ceil(cards.length / SECTION_SIZE)
+  return Array.from({ length: sectionCount }, (_, s) =>
+    Array.from({ length: SECTION_SIZE }, (_, i) => cards[s * SECTION_SIZE + i] ?? null)
+  )
+}
+
+function SectionDivider() {
+  return <div className="border-t-2 border-gray-200 my-6" />
+}
+
+function VerticalDivider() {
+  return <div className="mx-3 w-px bg-gray-300 self-stretch shrink-0" />
+}
+
+// ── Slot components ───────────────────────────────────────────────────────────
+
+function PlaceholderSlot({ slotIndex }: { slotIndex: number }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `slot-${slotIndex}` })
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg overflow-hidden border-2 border-dashed transition-colors ${
+        isOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-100'
+      }`}
+    >
+      <div style={{ paddingBottom: '140%' }} />
+    </div>
+  )
+}
+
+interface CardSlotProps {
+  card: Card
+  slotIndex: number
+  isOwned: boolean
+  isSelected: boolean
+  selectMode: boolean
+  isDraggingAny: boolean
+  onClick: () => void
+  onLongPress: () => void
+}
+
+function CardSlot({ card, slotIndex, isOwned, isSelected, selectMode, isDraggingAny, onClick, onLongPress }: CardSlotProps) {
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: `slot-${slotIndex}` })
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: card.id })
+
+  function setRef(el: HTMLElement | null) {
+    setDropRef(el)
+    setDragRef(el)
+  }
+
+  return (
+    <div
+      ref={setRef}
+      className={[
+        'relative',
+        isDragging ? 'opacity-0' : '',
+        isOver && isDraggingAny && !isDragging ? 'ring-2 ring-blue-400 ring-offset-1 rounded-lg' : '',
+      ].join(' ')}
+    >
+      <PokemonCard
+        card={card}
+        isOwned={isOwned}
+        isSelected={isSelected}
+        selectMode={selectMode}
+        removeMode
+        onClick={onClick}
+        onLongPress={onLongPress}
+      />
+      {!selectMode && !isDraggingAny && (
+        <div
+          {...attributes}
+          {...listeners}
+          onClick={e => e.stopPropagation()}
+          className="absolute top-1.5 left-1.5 z-10 p-1 rounded-md bg-black/30 text-white cursor-grab active:cursor-grabbing touch-none"
+        >
+          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+            <circle cx="5" cy="4" r="1.2" /><circle cx="11" cy="4" r="1.2" />
+            <circle cx="5" cy="8" r="1.2" /><circle cx="11" cy="8" r="1.2" />
+            <circle cx="5" cy="12" r="1.2" /><circle cx="11" cy="12" r="1.2" />
+          </svg>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function BinderPage() {
   const { id: binderId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
-  const { owned, orderedIds, loading: ownedLoading, removeMultiple, reorderCards } =
+  const { owned, slots, loading: ownedLoading, removeMultiple, moveCard } =
     useOwnedCards(user?.id ?? '', binderId)
   const { toasts, showToast, removeToast } = useToast()
   const { searchQuery, setSearchQuery, debouncedSearch } = useSearchDebounce()
@@ -40,17 +132,21 @@ export default function BinderPage() {
   const [removing, setRemoving] = useState(false)
   const [activeCard, setActiveCard] = useState<Card | null>(null)
 
-  // ── Unfiltered mode: orderedIds → card details cache ─────────────────────
+  // ── Unfiltered mode: slots → card details cache ───────────────────────────
   const isFiltered = !!(debouncedSearch || selectedPack)
   const [visibleCount, setVisibleCount] = useState(VISIBLE_STEP)
   const [cardMap, setCardMap] = useState<Map<string, Card>>(new Map())
+  const [unfilteredLoadingMore, setUnfilteredLoadingMore] = useState(false)
 
-  const visibleIds = isFiltered ? [] : orderedIds.slice(0, visibleCount)
-  const hasMoreUnfiltered = !isFiltered && visibleCount < orderedIds.length
+  // Always show up to MAX_BINDER slots, regardless of how many cards the binder has
+  const visibleSlots = isFiltered ? [] : slots.slice(0, visibleCount)
+  const hasMoreUnfiltered = !isFiltered && visibleCount < MAX_BINDER
+
+  const visibleCardIds = visibleSlots.filter((s): s is string => s !== null)
 
   useEffect(() => {
-    if (isFiltered || visibleIds.length === 0) return
-    const toFetch = visibleIds.filter(id => !cardMap.has(id))
+    if (isFiltered || visibleCardIds.length === 0) return
+    const toFetch = visibleCardIds.filter(id => !cardMap.has(id))
     if (toFetch.length === 0) return
     supabase.from('scraped_cards').select('*').in('id', toFetch).then(({ data }) => {
       setCardMap(prev => {
@@ -58,17 +154,32 @@ export default function BinderPage() {
         ;(data ?? []).forEach((c: Card) => next.set(c.id, c))
         return next
       })
+      setUnfilteredLoadingMore(false)
     })
-  }, [visibleIds.join(','), isFiltered])
+  }, [visibleCardIds.join(','), isFiltered])
 
-  // Reset visible count when binder changes
-  useEffect(() => { setVisibleCount(VISIBLE_STEP); setCardMap(new Map()) }, [binderId])
+  useEffect(() => {
+    setVisibleCount(VISIBLE_STEP)
+    setCardMap(new Map())
+    setUnfilteredLoadingMore(false)
+  }, [binderId])
 
-  const unfilteredCards = visibleIds.map(id => cardMap.get(id)).filter(Boolean) as Card[]
-  const unfilteredLoading = ownedLoading || (owned.size > 0 && unfilteredCards.length === 0 && visibleIds.length > 0)
+  // Map each visible slot position to Card | null
+  const visibleSlotCards: (Card | null)[] = visibleSlots.map(id =>
+    id ? (cardMap.get(id) ?? null) : null
+  )
+
+  const unfilteredLoading = ownedLoading || (
+    owned.size > 0 &&
+    visibleCardIds.length > 0 &&
+    !visibleCardIds.some(id => cardMap.has(id))
+  )
 
   const loadMoreUnfiltered = useCallback(() => {
-    if (hasMoreUnfiltered) setVisibleCount(c => c + VISIBLE_STEP)
+    if (hasMoreUnfiltered) {
+      setVisibleCount(c => c + VISIBLE_STEP)
+      setUnfilteredLoadingMore(true)
+    }
   }, [hasMoreUnfiltered])
 
   // ── Filtered mode: useInfiniteCards ──────────────────────────────────────
@@ -77,12 +188,12 @@ export default function BinderPage() {
 
   const { setSentinel } = useInfiniteScroll({
     loadMore: isFiltered ? loadMore : loadMoreUnfiltered,
-    loading: isFiltered ? filteredLoading : false,
+    loading: isFiltered ? filteredLoading : unfilteredLoading,
     reloading: isFiltered ? reloading : false,
-    loadingMore: isFiltered ? loadingMore : false,
+    loadingMore: isFiltered ? loadingMore : unfilteredLoadingMore,
   })
 
-  const cards = isFiltered ? filteredCards : unfilteredCards
+  const cards = isFiltered ? filteredCards : []
   const loading = isFiltered ? (filteredLoading || reloading) : unfilteredLoading
 
   // Fetch binder name
@@ -92,9 +203,6 @@ export default function BinderPage() {
       .then(({ data }) => { if (data) setBinderName(data.name) })
   }, [binderId])
 
-  const ownedKey = [...owned].sort().join(',')
-
-  // Packs for unfiltered (derive from cardMap since useInfiniteCards only runs when filtered)
   const unfilteredPacks = isFiltered ? [] : [...new Set([...cardMap.values()].map(c => c.pack))].sort()
   const displayPacks = isFiltered ? packs : unfilteredPacks
 
@@ -110,24 +218,147 @@ export default function BinderPage() {
   // ── DnD ──────────────────────────────────────────────────────────────────
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   function handleDragStart(event: DragStartEvent) {
-    const card = unfilteredCards.find(c => c.id === event.active.id)
+    const card = cardMap.get(event.active.id as string)
     if (card) setActiveCard(card)
   }
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setActiveCard(null)
-    if (!over || active.id === over.id) return
-    await reorderCards(active.id as string, over.id as string)
+    if (!over) return
+
+    const overId = over.id as string
+    if (!overId.startsWith('slot-')) return
+    const toSlot = parseInt(overId.slice(5), 10)
+
+    await moveCard(active.id as string, toSlot)
   }
 
   const isDragging = activeCard !== null
   const isEmpty = !ownedLoading && owned.size === 0
   const noResults = !loading && owned.size > 0 && cards.length === 0 && isFiltered
+
+  // ── Section rendering ─────────────────────────────────────────────────────
+
+  function renderFilteredSections() {
+    const sections = buildSections(filteredCards)
+    return sections.map((section, sIdx) => (
+      <div key={sIdx}>
+        {sIdx > 0 && <SectionDivider />}
+        <div className="flex items-stretch">
+          <div className="flex-1 grid grid-cols-3 gap-2">
+            {section.slice(0, 9).map((card, i) =>
+              card ? (
+                <PokemonCard
+                  key={card.id}
+                  card={card}
+                  isOwned={owned.has(card.id)}
+                  isSelected={selected.has(card.id)}
+                  selectMode={selectMode}
+                  removeMode
+                  onClick={() => handleCardClick(card)}
+                  onLongPress={() => handleCardLongPress(card)}
+                />
+              ) : (
+                <PlaceholderSlot key={`f-s${sIdx}-l${i}`} slotIndex={sIdx * SECTION_SIZE + i} />
+              )
+            )}
+          </div>
+          <VerticalDivider />
+          <div className="flex-1 grid grid-cols-3 gap-2">
+            {section.slice(9).map((card, i) =>
+              card ? (
+                <PokemonCard
+                  key={card.id}
+                  card={card}
+                  isOwned={owned.has(card.id)}
+                  isSelected={selected.has(card.id)}
+                  selectMode={selectMode}
+                  removeMode
+                  onClick={() => handleCardClick(card)}
+                  onLongPress={() => handleCardLongPress(card)}
+                />
+              ) : (
+                <PlaceholderSlot key={`f-s${sIdx}-r${i}`} slotIndex={sIdx * SECTION_SIZE + 9 + i} />
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    ))
+  }
+
+  function renderSlotSections() {
+    const sections = buildSections(visibleSlotCards)
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        {sections.map((section, sIdx) => (
+          <div key={sIdx}>
+            {sIdx > 0 && <SectionDivider />}
+            <div className="flex items-stretch">
+              <div className="flex-1 grid grid-cols-3 gap-2">
+                {section.slice(0, 9).map((card, i) => {
+                  const globalSlot = sIdx * SECTION_SIZE + i
+                  return card ? (
+                    <CardSlot
+                      key={card.id}
+                      card={card}
+                      slotIndex={globalSlot}
+                      isOwned={owned.has(card.id)}
+                      isSelected={selected.has(card.id)}
+                      selectMode={selectMode}
+                      isDraggingAny={isDragging}
+                      onClick={() => handleCardClick(card)}
+                      onLongPress={() => handleCardLongPress(card)}
+                    />
+                  ) : (
+                    <PlaceholderSlot key={`u-s${sIdx}-l${i}`} slotIndex={globalSlot} />
+                  )
+                })}
+              </div>
+              <VerticalDivider />
+              <div className="flex-1 grid grid-cols-3 gap-2">
+                {section.slice(9).map((card, i) => {
+                  const globalSlot = sIdx * SECTION_SIZE + 9 + i
+                  return card ? (
+                    <CardSlot
+                      key={card.id}
+                      card={card}
+                      slotIndex={globalSlot}
+                      isOwned={owned.has(card.id)}
+                      isSelected={selected.has(card.id)}
+                      selectMode={selectMode}
+                      isDraggingAny={isDragging}
+                      onClick={() => handleCardClick(card)}
+                      onLongPress={() => handleCardLongPress(card)}
+                    />
+                  ) : (
+                    <PlaceholderSlot key={`u-s${sIdx}-r${i}`} slotIndex={globalSlot} />
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <DragOverlay dropAnimation={null}>
+          {activeCard && (
+            <div className="opacity-90 rotate-2 shadow-2xl">
+              <PokemonCard card={activeCard} isOwned isSelected={false} selectMode={false} removeMode />
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
+    )
+  }
 
   return (
     <div className="bg-white min-h-screen py-10 px-4 font-sans">
@@ -141,7 +372,7 @@ export default function BinderPage() {
         />
 
         {/* Search + pack filter */}
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-6">
           <input
             type="text"
             value={searchQuery}
@@ -173,52 +404,9 @@ export default function BinderPage() {
             <p className="text-zinc-400 text-sm">No cards match your search.</p>
           </div>
         ) : isFiltered ? (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-            {cards.map(card => (
-              <PokemonCard
-                key={card.id}
-                card={card}
-                isOwned={owned.has(card.id)}
-                isSelected={selected.has(card.id)}
-                selectMode={selectMode}
-                removeMode
-                onClick={() => handleCardClick(card)}
-                onLongPress={() => handleCardLongPress(card)}
-              />
-            ))}
-          </div>
+          renderFilteredSections()
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={visibleIds} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {unfilteredCards.map(card => (
-                  <SortableCard
-                    key={card.id}
-                    card={card}
-                    isOwned={owned.has(card.id)}
-                    isSelected={selected.has(card.id)}
-                    selectMode={selectMode}
-                    isDraggingAny={isDragging}
-                    onClick={() => handleCardClick(card)}
-                    onLongPress={() => handleCardLongPress(card)}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-
-            <DragOverlay dropAnimation={null}>
-              {activeCard && (
-                <div className="opacity-90 rotate-2 shadow-2xl">
-                  <PokemonCard card={activeCard} isOwned isSelected={false} selectMode={false} removeMode />
-                </div>
-              )}
-            </DragOverlay>
-          </DndContext>
+          renderSlotSections()
         )}
 
         <div ref={setSentinel} className="h-1" />
@@ -246,56 +434,6 @@ export default function BinderPage() {
         <CardLightbox card={lightboxCard} onClose={() => setLightboxCard(null)} isOwned={owned.has(lightboxCard.id)} />
       )}
       <Toast toasts={toasts} onRemove={removeToast} />
-    </div>
-  )
-}
-
-// ── Sortable card with drag handle ───────────────────────────────────────────
-
-interface SortableCardProps {
-  card: Card
-  isOwned: boolean
-  isSelected: boolean
-  selectMode: boolean
-  isDraggingAny: boolean
-  onClick: () => void
-  onLongPress: () => void
-}
-
-function SortableCard({ card, isOwned, isSelected, selectMode, isDraggingAny, onClick, onLongPress }: SortableCardProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id })
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? 'opacity-30' : ''}
-    >
-      <div className="relative">
-        <PokemonCard
-          card={card}
-          isOwned={isOwned}
-          isSelected={isSelected}
-          selectMode={selectMode}
-          removeMode
-          onClick={onClick}
-          onLongPress={onLongPress}
-        />
-        {!selectMode && !isDraggingAny && (
-          <div
-            {...attributes}
-            {...listeners}
-            onClick={e => e.stopPropagation()}
-            className="absolute top-1.5 left-1.5 z-10 p-1 rounded-md bg-black/30 text-white cursor-grab active:cursor-grabbing touch-none"
-          >
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
-              <circle cx="5" cy="4" r="1.2" /><circle cx="11" cy="4" r="1.2" />
-              <circle cx="5" cy="8" r="1.2" /><circle cx="11" cy="8" r="1.2" />
-              <circle cx="5" cy="12" r="1.2" /><circle cx="11" cy="12" r="1.2" />
-            </svg>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

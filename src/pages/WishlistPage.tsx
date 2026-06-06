@@ -46,8 +46,10 @@ export default function WishlistPage() {
     const ids = pickerCardIds
     setPickerCardIds(null)
     setActing(true)
-    const ok = await addMultiple(ids, binderId)
-    if (ok) await removeFromWishlist(ids)
+    const result = await addMultiple(ids, binderId)
+    if (result === 'full') { showToast('Binder is full (max 540 cards)'); clearSelection(); setActing(false); return }
+    if (result === 'error') { showToast('Failed to add cards. Please try again.'); clearSelection(); setActing(false); return }
+    await removeFromWishlist(ids)
     showToast(`${ids.length} card${ids.length > 1 ? 's' : ''} added to binder ✓`)
     clearSelection()
     setActing(false)
