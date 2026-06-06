@@ -39,7 +39,6 @@ export function useCardSelection(owned?: Set<string>) {
     lightboxCard,
     setLightboxCard,
     clearSelection,
-    toggleSelected,
     handleCardClick,
     handleCardLongPress,
   }

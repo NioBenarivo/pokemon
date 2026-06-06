@@ -14,6 +14,7 @@ import { useCardSelection } from '../hooks/useCardSelection'
 import Spinner from '../components/Spinner'
 import CardGrid from '../components/CardGrid'
 import { addToBinder } from '../utils/cardActions'
+import { getActiveBinder } from '../hooks/useBinders'
 import type { Card } from '../data/cards'
 
 export default function CardsPage() {
@@ -38,7 +39,9 @@ async function handleAdd() {
     if (selected.size === 0) return
     setAdding(true)
     const ids = [...selected]
-    const ok = await addMultiple(ids)
+    const activeBinder = getActiveBinder()
+    if (!activeBinder) { showToast('Open a binder first'); setAdding(false); return }
+    const ok = await addMultiple(ids, activeBinder)
     if (ok) {
       const wishlisted = ids.filter(id => wishlist.has(id))
       if (wishlisted.length) await removeFromWishlist(wishlisted)

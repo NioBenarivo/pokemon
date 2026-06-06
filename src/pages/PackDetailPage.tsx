@@ -7,6 +7,7 @@ import { useWishlist } from '../hooks/useWishlist'
 import { useToast } from '../hooks/useToast'
 import CardGrid from '../components/CardGrid'
 import { addToBinder } from '../utils/cardActions'
+import { getActiveBinder } from '../hooks/useBinders'
 import SelectActionBar from '../components/SelectActionBar'
 import CardLightbox from '../components/CardLightbox'
 import Toast from '../components/Toast'
@@ -44,7 +45,9 @@ async function handleAddToWishlist() {
     if (selected.size === 0) return
     setAdding(true)
     const ids = [...selected]
-    const ok = await addMultiple(ids)
+    const activeBinder = getActiveBinder()
+    if (!activeBinder) { showToast('Open a binder first'); setAdding(false); return }
+    const ok = await addMultiple(ids, activeBinder)
     if (ok) {
       const wishlisted = ids.filter(id => wishlist.has(id))
       if (wishlisted.length) await removeFromWishlist(wishlisted)

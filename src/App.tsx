@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage'
 import PokemonListPage from './pages/PokemonListPage'
 import PokemonDetailPage from './pages/PokemonDetailPage'
 import CardsPage from './pages/CardsPage'
+import BinderListPage from './pages/BinderListPage'
 import BinderPage from './pages/BinderPage'
 import WishlistPage from './pages/WishlistPage'
 import PacksListPage from './pages/PacksListPage'
@@ -26,7 +27,8 @@ export default function App() {
         <Route path="/cards" element={<CardsPage />} />
         <Route path="/packs" element={<PacksListPage />} />
         <Route path="/packs/:id" element={<PackDetailPage />} />
-        <Route path="/binder" element={<BinderPage />} />
+        <Route path="/binder" element={<BinderListPage />} />
+        <Route path="/binder/:id" element={<BinderPage />} />
         <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="*" element={<Navigate to="/pokemon" replace />} />
       </Route>

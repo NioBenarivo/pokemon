@@ -49,7 +49,6 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
   // ── UI state (these trigger re-renders when they change) ─────────────────
   const [cards, setCards] = useState<Card[]>([])       // cards shown in the grid
   const [packs, setPacks] = useState<string[]>([])     // available packs for the dropdown
-  const [dbTotal, setDbTotal] = useState(0)            // total cards in the database (for StatsBar)
   const [loading, setLoading] = useState(true)         // true on first load (full-screen spinner)
   const [reloading, setReloading] = useState(false)    // true when filters change (grid spinner)
   const [loadingMore, setLoadingMore] = useState(false) // true when fetching the next page
@@ -100,26 +99,6 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
   const ownedKey = activeTab === 'binder'
     ? [...ownedIds].sort().join(',')
     : ''
-
-
-  // ── fetchTotal: count all cards in the database ──────────────────────────
-  //
-  // This is for the "18 / 120 collected" display in StatsBar.
-  // { count: 'exact', head: true } means: don't return any rows,
-  // just give us the total count. This is very fast.
-  async function fetchTotal() {
-    const { count, error } = await supabase
-      .from('scraped_cards')
-      .select('*', { count: 'exact', head: true })
-    if (error) { console.error('Failed to fetch card count:', error.message); return }
-    setDbTotal(count ?? 0)
-  }
-
-  // Run fetchTotal once when the hook first mounts.
-  // Also exported so App.tsx can call it after adding/removing cards.
-  useEffect(() => {
-    fetchTotal()
-  }, [])
 
 
   // ── Effect 2: fetch pack names for the filter dropdown ───────────────────
@@ -336,5 +315,5 @@ export function useInfiniteCards({ activeTab, searchQuery, selectedPack, ownedId
     setLoadingMore(false)
   }, [hasMore, activeTab, searchQuery, selectedPack, ownedKey])
 
-  return { cards, packs, dbTotal, loading, reloading, loadingMore, hasMore, loadMore, fetchTotal }
+  return { cards, packs, loading, reloading, loadingMore, hasMore, loadMore }
 }
